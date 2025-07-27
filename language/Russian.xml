@@ -1,6 +1,6 @@
 <languagePack>
 	<name>Russian (русский)</name>
-	<version>3.16</version>
+	<version>3.16.0001</version>
 	<author>
 		<name>berry</name>
 		<email>igory.ygr200@gmail.com</email>
@@ -1610,6 +1610,16 @@
 
 		<lang code="WSCheckBox_UnityMeshExtendedErrorChecking_Text" value="Unity Mesh Enhanced Error Checking" />
 		<lang code="WSCheckBox_UnityMeshExtendedErrorChecking_Tooltip" value="Tick to validate Unity meshes (provides better chance of rendering meshes correctly)" />
+		
+		
+<!-- New with 3.16.0001 -->
+
+		<lang code="WSPanel_PreviewPanel_ImageInvestigator_SwizzleFormatChooserLabel_Label" value="Swizzle" />
+		<lang code="WSPanel_PreviewPanel_ImageInvestigator_SwizzleFormatChooserLabel_Tooltip" value="The type of swizzle to perform on the image data" />
+		<lang code="ResourceProperty_BitsPerPixel" value="Bits Per Pixel" />
+		
+		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Text" value="Strip" />
+		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Tooltip" value="Whether face indeces should be read as a triangle strip (ticked) or as individual triangles (unticked)" />
 		
 		<lang code="" value="" />
 		

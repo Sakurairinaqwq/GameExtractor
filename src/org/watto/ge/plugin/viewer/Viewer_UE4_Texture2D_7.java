@@ -25,6 +25,7 @@ import org.watto.datatype.ImageResource;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.helper.UE4Helper;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -35,7 +36,9 @@ import org.watto.ge.plugin.resource.Resource_PAK_38;
 import org.watto.io.FileManipulator;
 import org.watto.io.FilenameSplitter;
 import org.watto.io.buffer.ByteBuffer;
+import org.watto.io.converter.ByteArrayConverter;
 import org.watto.io.converter.IntConverter;
+import org.watto.io.converter.LongConverter;
 import org.watto.task.Task_ExportFiles;
 
 /**
@@ -245,11 +248,24 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
       // 16 - null
       // 4 - null
       // 4 - File Directory Offset?
-      // 4 - Unknown (5)
+      fm.skip(32);
+
+      // [3.16.0001] Some have real names here, instead of "None"... (Outliver: Tribulation)
+      // 4 - Package Name Length (including null) (5)
+      int nameLength = fm.readInt();
+      try {
+        FieldValidator.checkFilenameLength(nameLength);
+      }
+      catch (Throwable t) {
+        // might have had the options 4-byte null earlier
+        nameLength = fm.readInt();
+      }
       // 4 - Package Name (None)
-      // 4 - null
-      // 1 - Unknown (128)
-      fm.skip(45);
+      // 1 - null Package Name Terminator
+      fm.skip(nameLength);
+
+      // 4 - Unknown
+      fm.skip(4);
 
       // 4 - Number of Names
       int nameCount = fm.readInt();
@@ -260,9 +276,19 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
       FieldValidator.checkOffset(nameDirOffset, arcSize);
 
       // 8 - null
+      fm.skip(8);
+
       // 4 - Number Of Exports
+      int exportCount = fm.readInt();
+
       // 4 - Exports Directory Offset
-      fm.skip(16);
+      long exportDirOffset = IntConverter.unsign(fm.readInt());
+
+      if (exportCount == 0 && exportDirOffset == 0) {
+        // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+        exportCount = fm.readInt();
+        exportDirOffset = IntConverter.unsign(fm.readInt());
+      }
 
       // 4 - Number Of Imports
       int importCount = fm.readInt();
@@ -339,7 +365,7 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
       // AND GENERATE THE TEXTURE IMAGE FOR DISPLAY
 
       // First up, see if the uassets file has the Exports in it, or if it's been put in a separate *.uexp file
-      //boolean inUExp = false;
+      boolean inUExp = false;
       if (filesDirOffset == arcSize || filesDirOffset + 8 == arcSize) {
         // probably in a separate *.uexp file - see if we can find one
         FileManipulator extractedFM = extractRelatedResource(fm, "uexp", true);
@@ -348,7 +374,7 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
           fm = extractedFM;
           filesDirOffset = 0; // so when we seek down further, it goes to the start of the uexp file
           arcSize += fm.getLength(); // add the size of this file to the size of the uassets file
-          //inUExp = true;
+          inUExp = true;
         }
       }
 
@@ -398,6 +424,70 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
       // 8 - Type ID (points to "PF_DXT5" or "PF_B8G8R8A8" for a Texture)
       long typeID = fm.readLong();
       String type = UE4Helper.getName(typeID);
+
+      if (type == null) {
+        // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+        // check here, as maybe it *should* be in an uexp file
+        if (!inUExp) {
+          FileManipulator extractedFM = extractRelatedResource(fm, "uexp", true);
+          if (extractedFM != null) {
+            fm = extractedFM;
+            filesDirOffset = 0; // so when we seek down further, it goes to the start of the uexp file
+            arcSize += fm.getLength(); // add the size of this file to the size of the uassets file
+            inUExp = true;
+
+            // REPEAT CODE FROM EARLIER
+
+            // 4 - null
+            while (fm.getOffset() < arcSize) {
+              if (fm.readByte() == 0) {
+                if (fm.readByte() == 0) {
+                  if (fm.readByte() == 0) {
+                    if (fm.readByte() == 0) {
+                      // found the 4 nulls, now keep going until we find the next real value
+
+                      while (fm.readByte() == 0 && fm.getOffset() < arcSize) {
+                        // keep reading, not a real value yet
+                      }
+
+                      // go back to this position
+                      fm.relativeSeek(fm.getOffset() - 1);
+                      break;
+
+                    }
+                  }
+                }
+              }
+            }
+
+            // 2 - Flags (1/3)
+            // 2 - Flags (1/0)
+            // 4 - Unknown (1)
+            fm.skip(8);
+
+            // 8 - Type ID (points to "PF_DXT5" or "PF_B8G8R8A8" for a Texture)
+            typeID = fm.readLong();
+            type = UE4Helper.getName(typeID);
+
+            if (type == null) {
+              // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+              // maybe there was a 4-byte field before the type ID
+              byte[] typeIDBytes = ByteArrayConverter.convertLittle(typeID);
+              typeIDBytes[0] = typeIDBytes[4];
+              typeIDBytes[1] = typeIDBytes[5];
+              typeIDBytes[2] = typeIDBytes[6];
+              typeIDBytes[3] = typeIDBytes[7];
+              typeIDBytes[4] = fm.readByte();
+              typeIDBytes[5] = fm.readByte();
+              typeIDBytes[6] = fm.readByte();
+              typeIDBytes[7] = fm.readByte();
+              typeID = LongConverter.convertLittle(typeIDBytes);
+              type = UE4Helper.getName(typeID);
+            }
+
+          }
+        }
+      }
 
       // 8 - File Length [+42]
       // 8 - null
@@ -453,7 +543,10 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
           // check for a separate ubulk file
 
           // First up, see if the data has been stored in a separate *.ubulk file
-          if (largestMipmapOffset + dataLength + 4 >= arcSize) {
+          if (largestMipmapOffset + dataLength + 4 >= arcSize || largestMipmapOffset == 8) {
+            // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+            // largestMipmapOffset=8 indicates the offset was read as "0" and then +8 added to it
+
             // probably in a separate *.ubulk file - see if we can find one
             FileManipulator extractedFM = extractRelatedResource(fm, "ubulk", true);
             if (extractedFM != null) {
@@ -568,7 +661,10 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
           // check for a separate ubulk file
 
           // First up, see if the data has been stored in a separate *.ubulk file
-          if (largestMipmapOffset + dataLength + 4 >= arcSize) {
+          if (largestMipmapOffset + dataLength + 4 >= arcSize || largestMipmapOffset == 8) {
+            // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+            // largestMipmapOffset=8 indicates the offset was read as "0" and then +8 added to it
+
             // probably in a separate *.ubulk file - see if we can find one
             FileManipulator extractedFM = extractRelatedResource(fm, "ubulk", true);
             if (extractedFM != null) {
@@ -623,7 +719,7 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
         if (Settings.getBoolean("NintendoSwitchSwizzle")) {
           // Unswizzle the image data first
           byte[] rawBytes = fm.readBytes(dataLength);
-          byte[] bytes = ImageFormatReader.unswizzleSwitch(rawBytes, width, height);
+          byte[] bytes = ImageSwizzler.unswizzleSwitch(rawBytes, width, height);
 
           fm.close();
           fm = new FileManipulator(new ByteBuffer(bytes));
@@ -686,7 +782,10 @@ public class Viewer_UE4_Texture2D_7 extends ViewerPlugin {
           // check for a separate ubulk file
 
           // First up, see if the data has been stored in a separate *.ubulk file
-          if (largestMipmapOffset + dataLength + 4 >= arcSize) {
+          if (largestMipmapOffset + dataLength + 4 >= arcSize || largestMipmapOffset == 8) {
+            // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+            // largestMipmapOffset=8 indicates the offset was read as "0" and then +8 added to it
+
             // probably in a separate *.ubulk file - see if we can find one
             FileManipulator extractedFM = extractRelatedResource(fm, "ubulk", true);
             if (extractedFM != null) {

@@ -25,6 +25,7 @@ import org.watto.datatype.ImageResource;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.helper.UE4Helper;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -427,6 +428,55 @@ public class Viewer_UE4_Texture2D_6 extends ViewerPlugin {
 
         // Go to the Largest Mipmap and read it (or, if the file had flag=72, it'll take them back to that pixel data)
 
+        // [3.16.0001] Game = Stray Gods: The Roleplaying Musical. Still not the greatest, the images are just too darn big, and for some reason are listed in the directory as rectangles when they should be squares.
+        // if the size is too large, we won't be able to load it in to GE to preview (eg 4096*8192 and larger is a bit of a problem)
+        // so lets iterate through and see if we can find a smaller mipmap to load
+        int additionalSmallerOffset = 0;
+        if (width > 2048 || height > 2048) {
+          fm.skip(28);
+
+          try {
+            int smallerWidth = fm.readInt();
+            FieldValidator.checkNumFiles(smallerWidth);
+
+            int smallerHeight = fm.readInt();
+            FieldValidator.checkNumFiles(smallerHeight);
+
+            fm.skip(20);
+            additionalSmallerOffset = fm.readInt();
+
+            width = smallerWidth * 2; // *2 because we're reading the size of the *next* mipmap, not this one
+            height = smallerHeight * 2;
+
+            // now repeat a second time, that'll do
+            if (width > 2048 || height > 2048) {
+              fm.skip(4); // only 12 this time, as we've already skipped 20 and read 4 above
+
+              try {
+                smallerWidth = fm.readInt();
+                FieldValidator.checkNumFiles(smallerWidth);
+
+                smallerHeight = fm.readInt();
+                FieldValidator.checkNumFiles(smallerHeight);
+
+                fm.skip(20);
+                additionalSmallerOffset = fm.readInt();
+
+                width = smallerWidth * 2; // *2 because we're reading the size of the *next* mipmap, not this one
+                height = smallerHeight * 2;
+
+                // no more repeats, we've already shrunk it twice
+              }
+              catch (Throwable t) {
+                additionalSmallerOffset = 0;
+              }
+            }
+          }
+          catch (Throwable t) {
+            additionalSmallerOffset = 0;
+          }
+        }
+
         // First up, see if the data has been stored in a separate *.ubulk file
         if (largestMipmapOffset + 4 == arcSize) {
           // probably in a separate *.ubulk file - see if we can find one
@@ -438,9 +488,21 @@ public class Viewer_UE4_Texture2D_6 extends ViewerPlugin {
           }
         }
 
-        FieldValidator.checkLength(dataLength, arcSize); // delayed from above
+        try {
+          FieldValidator.checkLength(dataLength, arcSize); // delayed from above
+        }
+        catch (Throwable t) {
+          // extra large files are sometimes in a *.uptnl file.
+          // false, because if we find one, we want to extract it to disk, as it's pretty large (like, 32MB and things like that)
+          FileManipulator extractedFM = extractRelatedResource(fm, "uptnl", false);
+          if (extractedFM != null) {
+            fm = extractedFM;
+            largestMipmapOffset = 0; // so when we seek down further, it goes to the start of the ubulk file
+            arcSize += fm.getLength(); // add the size of this file to the size of the uassets file
+          }
+        }
 
-        fm.seek(largestMipmapOffset);
+        fm.seek(largestMipmapOffset + additionalSmallerOffset);
 
         ImageResource imageResource = null;
 
@@ -540,7 +602,7 @@ public class Viewer_UE4_Texture2D_6 extends ViewerPlugin {
         if (Settings.getBoolean("NintendoSwitchSwizzle")) {
           // Unswizzle the image data first
           byte[] rawBytes = fm.readBytes(dataLength);
-          byte[] bytes = ImageFormatReader.unswizzleSwitch(rawBytes, width, height);
+          byte[] bytes = ImageSwizzler.unswizzleSwitch(rawBytes, width, height);
 
           fm.close();
           fm = new FileManipulator(new ByteBuffer(bytes));

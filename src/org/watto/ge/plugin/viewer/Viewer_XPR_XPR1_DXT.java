@@ -23,6 +23,7 @@ import org.watto.datatype.Resource;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
+import org.watto.ge.plugin.archive.Plugin_XPR_XPR0;
 import org.watto.ge.plugin.archive.Plugin_XPR_XPR1;
 import org.watto.io.FileManipulator;
 
@@ -69,7 +70,7 @@ public class Viewer_XPR_XPR1_DXT extends ViewerPlugin {
       int rating = 0;
 
       ArchivePlugin plugin = Archive.getReadPlugin();
-      if (plugin instanceof Plugin_XPR_XPR1) {
+      if (plugin instanceof Plugin_XPR_XPR1 || plugin instanceof Plugin_XPR_XPR0) {
         rating += 50;
       }
       else {

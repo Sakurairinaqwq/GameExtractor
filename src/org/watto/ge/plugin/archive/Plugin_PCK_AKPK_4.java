@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Archive;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -154,6 +155,7 @@ public class Plugin_PCK_AKPK_4 extends ArchivePlugin {
 
         // 4 - Number of Files in this Folder
         numFiles = fm.readInt();
+
         FieldValidator.checkNumFiles(numFiles);
 
         String folderName = folderNames[f];

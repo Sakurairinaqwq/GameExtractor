@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2024 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -440,7 +440,8 @@ public class Plugin_PAK_65 extends ArchivePlugin {
         new FileType("localizationasset", "Localization Asset", FileType.TYPE_OTHER),
         new FileType("scriptedimporter", "Scripted Importer", FileType.TYPE_OTHER),
         // NEW ONES AFTER HERE
-        new FileType("soundwave", "Sound Wave", FileType.TYPE_AUDIO)
+        new FileType("soundwave", "Sound Wave", FileType.TYPE_AUDIO),
+        new FileType("bnk", "BNK Sound Archive", FileType.TYPE_ARCHIVE)
     };
 
     return types;
@@ -1493,11 +1494,24 @@ public class Plugin_PAK_65 extends ArchivePlugin {
       // 16 - null
       // 4 - null (optional - in some newer archives - we pick this up in the try-catch down further)
       // 4 - File Directory Offset?
-      // 4 - Unknown (5)
+      fm.skip(28);
+
+      // [3.16.0001] version 7 uasset files don't have "None" here, they have real names? (Outliver: Tribulation)
+      // 4 - Package Name Length (including null) (5)
+      int nameLength = fm.readInt();
+      try {
+        FieldValidator.checkFilenameLength(nameLength);
+      }
+      catch (Throwable t) {
+        // might have had the options 4-byte null earlier
+        nameLength = fm.readInt();
+      }
       // 4 - Package Name (None)
-      // 4 - null
-      // 1 - Unknown (128)
-      fm.skip(41);
+      // 1 - null Package Name Terminator
+      fm.skip(nameLength);
+
+      // 4 - Unknown
+      fm.skip(4);
 
       // 4 - Number of Names
       int nameCount = fm.readInt();
@@ -1518,10 +1532,17 @@ public class Plugin_PAK_65 extends ArchivePlugin {
 
       // 4 - Number Of Exports
       int exportCount = fm.readInt();
-      FieldValidator.checkNumFiles(exportCount);
 
       // 4 - Exports Directory Offset
       long exportDirOffset = IntConverter.unsign(fm.readInt());
+
+      if (exportCount == 0 && exportDirOffset == 0) {
+        // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+        exportCount = fm.readInt();
+        exportDirOffset = IntConverter.unsign(fm.readInt());
+      }
+
+      FieldValidator.checkNumFiles(exportCount);
       FieldValidator.checkOffset(exportDirOffset, arcSize);
 
       // 4 - Number Of Imports

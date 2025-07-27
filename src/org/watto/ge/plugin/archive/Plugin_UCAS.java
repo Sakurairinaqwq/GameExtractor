@@ -16,6 +16,7 @@ package org.watto.ge.plugin.archive;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import org.watto.ErrorLogger;
 import org.watto.Settings;
@@ -162,7 +163,13 @@ public class Plugin_UCAS extends ArchivePlugin {
       // 4 - Unknown (1)
       // 8 - Unknown
       // 16 - null
-      // 8 - Unknown (15)
+      // 4 - Unknown (15)
+      fm.skip(44);
+
+      // 4 - Number of Entries in Directory 3b
+      int numEntries2B = fm.readInt();
+      FieldValidator.checkNumFiles(numEntries2B + 1); // +1 to allow nulls
+
       // 8 - Unknown (-1)
       // 48 - null
 
@@ -172,7 +179,10 @@ public class Plugin_UCAS extends ArchivePlugin {
       int dir3Offset = dir2Offset + numFiles * 10;
       FieldValidator.checkOffset(dir3Offset, arcSize);
 
-      int compressionDirOffset = dir3Offset + numParts * 12;
+      int dir3bOffset = dir3Offset + numEntries2B * 4;
+      FieldValidator.checkOffset(dir3Offset, arcSize);
+
+      int compressionDirOffset = dir3bOffset + numParts * 12;
       FieldValidator.checkOffset(compressionDirOffset, arcSize);
 
       fm.seek(compressionDirOffset);
@@ -193,6 +203,7 @@ public class Plugin_UCAS extends ArchivePlugin {
           //exporters[i + 1] = new Exporter_Encryption_AES(ByteArrayConverter.convertLittle(new Hex("D73A797940208F2FB29256BE81A7CBC7B74CBF899441BB277F357F7F4577DBBB")));
         }
         else if (compression.equalsIgnoreCase("Zlib")) {
+          // Unfortunately this still fails if we need to apply Compression AND Encryption - eg game Witch It - don't know how to detect the encryption key and then apply it.
           exporters[i + 1] = Exporter_ZLib.getInstance();
         }
         else {
@@ -451,7 +462,7 @@ public class Plugin_UCAS extends ArchivePlugin {
       }
       fm = originalFM;
 
-      fm.seek(dir3Offset);
+      fm.seek(dir3bOffset);
 
       TaskProgressManager.setMaximum(numParts);
 
@@ -549,15 +560,27 @@ public class Plugin_UCAS extends ArchivePlugin {
         }
       }
 
+      // Now we need to work out the size of each part. Noting that the firstPartIDs are not necessarily in numerical order (Witch It)
+      int[] duplicateFirstParts = new int[numFiles];
+      System.arraycopy(firstPartIDs, 0, duplicateFirstParts, 0, numFiles);
+      Arrays.sort(duplicateFirstParts);
+
+      HashMap<Integer, Integer> sizeMap = new HashMap<Integer, Integer>(numFiles);
+
       for (int i = 0; i < numFiles - 1; i++) {
-        numPartsInFiles[i] = firstPartIDs[i + 1] - firstPartIDs[i];
+        //numPartsInFiles[i] = firstPartIDs[i + 1] - firstPartIDs[i];
+        int size = duplicateFirstParts[i + 1] - duplicateFirstParts[i];
+        sizeMap.put(duplicateFirstParts[i], size);
       }
-      numPartsInFiles[numFiles - 1] = numParts - firstPartIDs[numFiles - 1];
+      //numPartsInFiles[numFiles - 1] = numParts - firstPartIDs[numFiles - 1];
+      int size = numParts - duplicateFirstParts[numFiles - 1];
+      sizeMap.put(duplicateFirstParts[numFiles - 1], size);
 
       for (int i = 0; i < numFiles; i++) {
 
         int firstPartID = firstPartIDs[i];
-        int numPartsInFile = numPartsInFiles[i];
+        //int numPartsInFile = numPartsInFiles[i];
+        int numPartsInFile = sizeMap.get(firstPartID);
 
         long[] blockOffsets = new long[numPartsInFile];
         long[] blockLengths = new long[numPartsInFile];

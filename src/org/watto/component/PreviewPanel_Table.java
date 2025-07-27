@@ -26,6 +26,7 @@ import javax.swing.JTable;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumn;
 
 import org.watto.ErrorLogger;
@@ -70,6 +71,15 @@ public class PreviewPanel_Table extends PreviewPanel implements WSKeyableInterfa
   **/
   public WSTable getTable() {
     return preview;
+  }
+
+  /**
+  **********************************************************************************************
+
+  **********************************************************************************************
+  **/
+  public WSTableColumn[] getTableColumns() {
+    return tableColumns;
   }
 
   /**
@@ -191,14 +201,6 @@ public class PreviewPanel_Table extends PreviewPanel implements WSKeyableInterfa
   @Override
   public void onOpenRequest() {
     try {
-      if (SingletonManager.has("CurrentViewer")) {
-        ViewerPlugin viewerPlugin = (ViewerPlugin) SingletonManager.get("CurrentViewer");
-        if (viewerPlugin != null) {
-          if (viewerPlugin.canEdit(this)) {
-          }
-
-        }
-      }
     }
     catch (Throwable t) {
     }
@@ -270,6 +272,22 @@ public class PreviewPanel_Table extends PreviewPanel implements WSKeyableInterfa
       WSComponent c = (WSComponent) source;
       String code = c.getCode();
       if (code.equals("PreviewPanel_Text_SaveChanges")) {
+        // [3.16.0001] If we don't do an "editingStopped" on the current cell, all the changes we've made will be saved EXCEPT for this current cell.
+        // So, need to trick the editor to finish first, before saving.
+
+        int row = preview.getSelectedRow();
+        int col = preview.getSelectedColumn();
+
+        if (row == -1 || col == -1) {
+          // We we don't currently have any selection, we have nothing to cancel, nothing has changed
+        }
+        else {
+          TableCellEditor editor = preview.getCellEditor();
+          if (editor != null) {
+            editor.stopCellEditing();
+          }
+        }
+
         if (objectChanged) {
           saveChanges();
         }
@@ -277,6 +295,7 @@ public class PreviewPanel_Table extends PreviewPanel implements WSKeyableInterfa
       }
       else if (code.equals("PreviewTable")) {
         reloadSelectedValue();
+        setObjectChanged(true); // if we've clicked in the table, we probably triggered the editor, so we should enable the save button
         return true;
       }
     }
@@ -364,6 +383,10 @@ public class PreviewPanel_Table extends PreviewPanel implements WSKeyableInterfa
   **/
   public void reloadSelectedValue(int row, int col) {
     try {
+
+      if (row == -1 || col == -1) {
+        return;
+      }
 
       // Work out the size of column 1 (the headings) and set it, so that column 2 (the value) is maximized as much as possible
       FontMetrics metrics = detailsTable.getFontMetrics(LookAndFeelManager.getFont());

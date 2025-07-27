@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -50,8 +51,9 @@ public class Plugin_BF_BIG extends ArchivePlugin {
         "Prince Of Persia: Sands Of Time",
         "Prince Of Persia: Warrior Within",
         "Prince Of Persia: The Two Thrones",
+        "Prince of Persia: Revelations",
         "TMNT (Teenage Mutant Ninja Turtles)");
-    setPlatforms("PC");
+    setPlatforms("PC", "PSP");
 
     // MUST BE LOWER CASE !!!
     setFileTypes(new FileType("waa", "Ambiance Audio File", FileType.TYPE_AUDIO),

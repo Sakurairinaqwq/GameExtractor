@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.viewer;
 
 import java.awt.Image;
+
 import org.watto.ErrorLogger;
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_Image;
@@ -25,6 +26,7 @@ import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageFormatWriter;
 import org.watto.ge.helper.ImageManipulator;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -248,7 +250,7 @@ public class Viewer_TXD_2_TXDTEX extends ViewerPlugin {
         return null;
       }
 
-      imageResource.setPixels(ImageFormatReader.unswizzle(imageResource.getImagePixels(), width, height, 1));
+      imageResource.setPixels(ImageSwizzler.unswizzle(imageResource.getImagePixels(), width, height, 1));
 
       fm.close();
 
@@ -361,7 +363,7 @@ public class Viewer_TXD_2_TXDTEX extends ViewerPlugin {
           //ImageManipulator mipmap = mipmaps[m];
 
           // do the swizzle
-          mipmaps[m].setPixels(ImageFormatReader.swizzle(mipmaps[m].getImagePixels(), mipmapWidth, mipmapHeight, 1));
+          mipmaps[m].setPixels(ImageSwizzler.swizzle(mipmaps[m].getImagePixels(), mipmapWidth, mipmapHeight, 1));
 
           // then convert to paletted
           ImageManipulator mipmap = new ImageManipulator(mipmaps[m]);
@@ -397,7 +399,7 @@ public class Viewer_TXD_2_TXDTEX extends ViewerPlugin {
         for (int m = 0; m < mipmapCount; m++) {
           ImageResource mipmap = mipmaps[m];
 
-          mipmap.setPixels(ImageFormatReader.unswizzle(mipmap.getImagePixels(), mipmapWidth, mipmapHeight, 1));
+          mipmap.setPixels(ImageSwizzler.unswizzle(mipmap.getImagePixels(), mipmapWidth, mipmapHeight, 1));
 
           if (imageFormat.equals("DXT1")) {
             // 4 - Mipmap Pixel Data Length

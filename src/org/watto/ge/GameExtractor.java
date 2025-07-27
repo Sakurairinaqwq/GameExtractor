@@ -68,8 +68,10 @@ import javax.swing.JFrame;
 - Audio Viewer where raw audio is read from a file, a WAV header is prepended, and it's played as an ordinary WAV file - Viewer_A00_MEL
 - 3D Model Viewer - VPK_VPK_VMESHC or Viewer_Unity3D_MESH or Viewer_POD_BIN or Viewer_BMOD_OMOD_OBST
 - 3D Model Viewer with Textures and multiple Mesh Groups - Viewer_GTC_MD2_MDL3
+- 3D Model Viewer with Triangle Strip for Faces - Viewer_SHD_MRTS_FPM_FPM7
 - 3D Model Writer - Viewer_OBJ
 - Table Viewer including Editing/Replacing the file (Save button) - Viewer_RES_0TSR_3_VAL_IGM or Viewer_WAD_WADH_3_ENG
+- Table Viewer, where you can drag in the texts from a CSV or Tabbed file (Convert on Replace) - Viewer_LOC_LANG.replace() and associated Plugin_LOC
 - Scanning unknown files to determine their file type (by adding some custom types to the list of standard ones) - Plugin_PAK_44
 - Scanning unknown files to determine their file type (custom, rather than using the automatic scanner) - Plugin_000_9 (see end of read() method)
 
@@ -79,6 +81,7 @@ import javax.swing.JFrame;
 - FrameCount (the number of frames in an animation)
 - FileID
 - PaletteID
+- BitsPerPixel
 - Hash
 - Filename
 - ImageFormat (eg DXT1, DXT3, DXT5, ARGB, 16F16F16F16F_ABGR, 8BitPaletted, etc.)
@@ -94,6 +97,7 @@ import javax.swing.JFrame;
 - FaceCount
 - VertexCount
 - NormalCount
+
 
 // COMMON ARCHIVE PLUGINS (Supported Game Engines, for example)...
 - Unreal Engine 4                 = Plugin_PAK_38
@@ -418,7 +422,14 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
     return instance;
   }
 
+  /**
+  **********************************************************************************************
 
+  **********************************************************************************************
+  **/
+  public static boolean isFullVersion() {
+    return false;
+  }
 
   /**
    **********************************************************************************************
@@ -1162,10 +1173,6 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
   **********************************************************************************************
   **/
   public boolean promptToSave() {
-
-    // Now check if the Archive was edited at all, and prompt to save
-    if (ChangeMonitor.check()) {
-    }
     return false;
   }
 
@@ -1302,7 +1309,7 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
         popupTask.setDirection(Task.DIRECTION_REDO);
         new Thread(popupTask).start();
         //SwingUtilities.invokeLater(popupTask);
-      }
+    }
   }
 
   /**

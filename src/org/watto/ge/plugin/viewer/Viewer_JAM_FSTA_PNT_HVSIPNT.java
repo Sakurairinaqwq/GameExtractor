@@ -20,6 +20,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -201,7 +202,7 @@ public class Viewer_JAM_FSTA_PNT_HVSIPNT extends ViewerPlugin {
       int numPixels = width * height;
       byte[] pixelBytes = fm.readBytes(numPixels);
 
-      pixelBytes = ImageFormatReader.unswizzlePS2(pixelBytes, width, height);
+      pixelBytes = ImageSwizzler.unswizzlePS2(pixelBytes, width, height);
 
       int[] pixels = new int[numPixels];
       for (int i = 0; i < numPixels; i++) {

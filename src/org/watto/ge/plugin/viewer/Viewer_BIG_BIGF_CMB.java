@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.viewer;
 
 import java.awt.Image;
+
 import org.watto.ErrorLogger;
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_Image;
@@ -25,6 +26,7 @@ import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageFormatWriter;
 import org.watto.ge.helper.ImageManipulator;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -461,7 +463,7 @@ public class Viewer_BIG_BIGF_CMB extends ViewerPlugin {
           }
 
           if (ps2Striped) {
-            palette = ImageFormatReader.stripePalettePS2(palette);
+            palette = ImageSwizzler.stripePalettePS2(palette);
           }
 
         }
@@ -753,7 +755,7 @@ public class Viewer_BIG_BIGF_CMB extends ViewerPlugin {
           else if (paletteFormat == 33) {
             // 32bit RGBA (PS2 Striped)
             if (flags != 0) {
-              palette = ImageFormatReader.stripePalettePS2(palette);
+              palette = ImageSwizzler.stripePalettePS2(palette);
             }
             //ImageFormatWriter.writePaletteRGBA(fm, palette);
 

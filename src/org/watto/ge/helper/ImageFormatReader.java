@@ -687,7 +687,7 @@ public class ImageFormatReader {
    **********************************************************************************************
    **/
   public static ImageResource read4BitPaletted(FileManipulator fm, int width, int height) {
-    int[] palette = PaletteGenerator.getGrayscalePalette().getPalette();
+    int[] palette = PaletteGenerator.getGrayscale4BitPalette().getPalette();
     return read4BitPaletted(fm, width, height, palette);
   }
 
@@ -1078,7 +1078,7 @@ public class ImageFormatReader {
 
     // X Bytes - Pixel Data
     int[] pixels = new int[numPixels];
-    pixels = unswizzle(pixels, width, height, 2048);
+    pixels = ImageSwizzler.unswizzle(pixels, width, height, 2048);
 
     for (int i = 0; i < numPixels; i++) {
       int byte1 = ByteConverter.unsign(fm.readByte());
@@ -1227,6 +1227,12 @@ public class ImageFormatReader {
    **/
   public static ImageResource readBC5(FileManipulator fm, int width, int height) {
 
+    int numPixels = width * height;
+    long remainingLength = fm.getRemainingLength();
+    if (remainingLength < ((numPixels / 2) - 256)) { // quick simple check to kill off some bad reads (adds 256 bytes as a little tolerance)
+      return null;
+    }
+
     // ensure width and height are multiples of 4...
     int heightMod = height % 4;
     if (heightMod != 0) {
@@ -1238,7 +1244,7 @@ public class ImageFormatReader {
     }
 
     // X Bytes - Pixel Data
-    int[] data = new int[width * height];
+    int[] data = new int[numPixels];
 
     for (int y = 0; y < height; y += 4) {
       // BC5 encodes 4x4 blocks of pixels
@@ -1339,6 +1345,136 @@ public class ImageFormatReader {
           for (int bx = 0; bx < 4; ++bx) {
             int position = 4 * by + bx;
             data[(y + by) * width + x + bx] = ((255 << 24) | (redColors[position] << 16) | (greenColors[position] << 8) | 255);// ARGB
+          }
+        }
+      }
+    }
+
+    return new ImageResource(data, width, height);
+
+  }
+
+  /**
+   **********************************************************************************************
+   * Reads a BC6H Image
+   * Uses Native DLL, as the Java code doesn't work yet
+   **********************************************************************************************
+   **/
+  public static ImageResource readBC6H(FileManipulator fm, int width, int height) {
+
+    // ensure width and height are multiples of 4...
+    int heightMod = height % 4;
+    if (heightMod != 0) {
+      height += (4 - heightMod);
+    }
+    int widthMod = width % 4;
+    if (widthMod != 0) {
+      width += (4 - widthMod);
+    }
+
+    // X Bytes - Pixel Data
+    int numPixels = width * height;
+
+    long remainingLength = fm.getRemainingLength();
+    if (remainingLength < (numPixels / 2)) { // quick simple check to kill off some bad reads
+      return null;
+    }
+
+    int[] data = new int[numPixels];
+
+    //BC6Reader bc6decomp = new BC6Reader();
+    NativeBC6Decomp bc6decomp = new NativeBC6Decomp();
+
+    for (int y = 0; y < height; y += 4) {
+      // DXT encodes 4x4 blocks of pixels
+      for (int x = 0; x < width; x += 4) {
+
+        byte[] blockData = fm.readBytes(16);
+        //int[] decodedPixels = bc6decomp.bcdec_bc6h_half(blockData, false);
+        float[] decodedFloats = bc6decomp.unpackBC6Block(blockData);
+
+        // The NativeBC6 DLL returns an array of floats, which is in the form r1,g1,b1,r2,g2,b2, ...
+        // Need to convert them into pixels
+        int[] decodedPixels = new int[16];
+        for (int i = 0, j = 0; i < 16; i++, j += 3) {
+          int r = (int) (decodedFloats[j] * 255);
+          int g = (int) (decodedFloats[j + 1] * 255);
+          int b = (int) (decodedFloats[j + 2] * 255);
+          int a = 255;
+          decodedPixels[i] = a << 24 | r << 16 | g << 8 | b;
+        }
+
+        int decodedPos = 0;
+
+        for (int by = 0; by < 4; ++by) {
+          for (int bx = 0; bx < 4; ++bx) {
+            data[(y + by) * width + x + bx] = decodedPixels[decodedPos];
+            decodedPos++;
+          }
+        }
+      }
+    }
+
+    return new ImageResource(data, width, height);
+
+  }
+
+  /**
+   **********************************************************************************************
+   * Reads a BC6H Image
+   * Uses Native DLL, as the Java code doesn't work yet
+   **********************************************************************************************
+   **/
+  public static ImageResource readBC6H_Signed(FileManipulator fm, int width, int height) {
+
+    // ensure width and height are multiples of 4...
+    int heightMod = height % 4;
+    if (heightMod != 0) {
+      height += (4 - heightMod);
+    }
+    int widthMod = width % 4;
+    if (widthMod != 0) {
+      width += (4 - widthMod);
+    }
+
+    // X Bytes - Pixel Data
+    int numPixels = width * height;
+
+    long remainingLength = fm.getRemainingLength();
+    if (remainingLength < (numPixels / 2)) { // quick simple check to kill off some bad reads
+      return null;
+    }
+
+    int[] data = new int[numPixels];
+
+    //BC6Reader bc6decomp = new BC6Reader();
+    NativeBC6Decomp bc6decomp = new NativeBC6Decomp();
+
+    for (int y = 0; y < height; y += 4) {
+      // DXT encodes 4x4 blocks of pixels
+      for (int x = 0; x < width; x += 4) {
+
+        byte[] blockData = fm.readBytes(16);
+        //int[] decodedPixels = bc6decomp.bcdec_bc6h_half(blockData, false);
+        float[] decodedFloats = bc6decomp.unpackBC6BlockSigned(blockData);
+
+        // The NativeBC6 DLL returns an array of floats, which is in the form r1,g1,b1,r2,g2,b2, ...
+        // Need to convert them into pixels
+        int[] decodedPixels = new int[16];
+        for (int i = 0, j = 0; i < 16; i++, j += 3) {
+          int r = (int) (decodedFloats[j] * 255);
+          int g = (int) (decodedFloats[j + 1] * 255);
+          int b = (int) (decodedFloats[j + 2] * 255);
+          int a = 255;
+          decodedPixels[i] = a << 24 | r << 16 | g << 8 | b;
+        }
+
+        int decodedPos = 0;
+
+        for (int by = 0; by < 4; ++by) {
+          for (int bx = 0; bx < 4; ++bx) {
+            data[(y + by) * width + x + bx] = decodedPixels[decodedPos];
+            decodedPos++;
           }
         }
       }
@@ -2290,7 +2426,7 @@ public class ImageFormatReader {
     byte[] bytes = fm.readBytes(numBytes);
 
     // deswizzle them
-    byte[] outBytes = unswizzle(bytes, width, height, 16);
+    byte[] outBytes = ImageSwizzler.unswizzle(bytes, width, height, 16);
 
     /*
     FileManipulator testout = new FileManipulator(new File("c:\\out_java.txt"), true);
@@ -2394,6 +2530,55 @@ public class ImageFormatReader {
     fm.close();
 
     return imageResource;
+  }
+
+  /**
+   **********************************************************************************************
+   * Reads an ETC1
+   // TODO UNTESTED
+   **********************************************************************************************
+   **/
+  public static ImageResource readETC1_RGB8(FileManipulator fm, int width, int height) {
+
+    // ensure width and height are multiples of 4...
+    int heightMod = height % 4;
+    if (heightMod != 0) {
+      height += (4 - heightMod);
+    }
+    int widthMod = width % 4;
+    if (widthMod != 0) {
+      width += (4 - widthMod);
+    }
+
+    ETC2Reader reader = new ETC2Reader();
+
+    // X Bytes - Pixel Data
+    int[] data = new int[width * height];
+
+    for (int y = 0; y < height; y += 4) {
+      // DXT encodes 4x4 blocks of pixels
+      for (int x = 0; x < width; x += 4) {
+
+        int[] blockIn = new int[8];
+        int[] blockOut = new int[64];
+
+        for (int i = 0; i < 16; i++) {
+          blockIn[i] = ByteConverter.unsign(fm.readByte());
+        }
+
+        reader.detexDecompressBlockETC1(blockIn, reader.DETEX_MODE_MASK_ALL, 0, blockOut);
+
+        int readPos = 0;
+        for (int by = 0; by < 4; ++by) {
+          for (int bx = 0; bx < 4; ++bx) {
+            data[(y + by) * width + x + bx] = blockOut[readPos++];
+          }
+        }
+      }
+    }
+
+    return new ImageResource(data, width, height);
+
   }
 
   /**
@@ -3492,387 +3677,6 @@ public class ImageFormatReader {
     image.setPixels(reversedPixels);
     return image;
   }
-
-  /**
-   **********************************************************************************************
-  Stripes a color palette for the PS2
-   **********************************************************************************************
-   **/
-  public static int[] stripePalettePS2(int[] palette) {
-    return unstripePalettePS2(palette); // the function is reversible
-  }
-
-  /**
-   **********************************************************************************************
-  Swizzles an image for the PS2
-   **********************************************************************************************
-   **/
-  public static byte[] swizzlePS2(byte[] bytes, int width, int height) {
-
-    // Make a copy of the swizzled input
-    int dataLength = bytes.length;
-    byte[] swizzled = new byte[dataLength];
-    System.arraycopy(bytes, 0, swizzled, 0, dataLength);
-
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        int block_location = (y & (~0xf)) * width + (x & (~0xf)) * 2;
-        int swap_selector = (((y + 2) >> 2) & 0x1) * 4;
-        int posY = (((y & (~3)) >> 1) + (y & 1)) & 0x7;
-        int column_location = posY * width * 2 + ((x + swap_selector) & 0x7) * 4;
-
-        int byte_num = ((y >> 1) & 1) + ((x >> 2) & 2); // 0,1,2,3
-
-        //bytes[(y * width) + x] = swizzled[block_location + column_location + byte_num];
-        bytes[block_location + column_location + byte_num] = swizzled[(y * width) + x];
-      }
-    }
-
-    return bytes;
-  }
-
-  /**
-   **********************************************************************************************
-  Swizzles an image for the PS2
-  SAME AS OTHER METHOD, EXCEPT... the bytes are an int[] instead of a byte[]
-   **********************************************************************************************
-   **/
-  public static int[] swizzlePS2(int[] bytes, int width, int height) {
-
-    // Make a copy of the swizzled input
-    int dataLength = bytes.length;
-    int[] swizzled = new int[dataLength];
-    System.arraycopy(bytes, 0, swizzled, 0, dataLength);
-
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        int block_location = (y & (~0xf)) * width + (x & (~0xf)) * 2;
-        int swap_selector = (((y + 2) >> 2) & 0x1) * 4;
-        int posY = (((y & (~3)) >> 1) + (y & 1)) & 0x7;
-        int column_location = posY * width * 2 + ((x + swap_selector) & 0x7) * 4;
-
-        int byte_num = ((y >> 1) & 1) + ((x >> 2) & 2); // 0,1,2,3
-
-        //bytes[(y * width) + x] = swizzled[block_location + column_location + byte_num];
-        bytes[block_location + column_location + byte_num] = swizzled[(y * width) + x];
-      }
-    }
-
-    return bytes;
-  }
-
-  /**
-   **********************************************************************************************
-  Unstripes a color palette for the PS2
-   **********************************************************************************************
-   **/
-  public static int[] unstripePalettePS2(int[] palette) {
-
-    int numColors = palette.length;
-
-    int parts = numColors / 32;
-    int stripes = 2;
-    int colors = 8;
-    int blocks = 2;
-
-    int i = 0;
-    int[] newPalette = new int[numColors];
-    for (int part = 0; part < parts; part++) {
-      for (int block = 0; block < blocks; block++) {
-        for (int stripe = 0; stripe < stripes; stripe++) {
-          for (int color = 0; color < colors; color++) {
-            newPalette[i++] = palette[part * colors * stripes * blocks + block * colors + stripe * stripes * colors + color];
-          }
-        }
-      }
-    }
-
-    return newPalette;
-  }
-
-  /**
-   **********************************************************************************************
-  Un-swizzles (Morton Code) an image
-  Based on puyotools --> Libraries/GimSharp/GimTexture/GimDataCodec.cs --> UnSwizzle()
-   **********************************************************************************************
-   **/
-  public static byte[] unswizzle(byte[] bytes, int width, int height, int blockSize) {
-
-    int numBytes = bytes.length;
-    byte[] outBytes = new byte[numBytes];
-
-    int maxPos = numBytes / blockSize;
-
-    int outPos = 0;
-
-    for (int x = 0; x < width; x++) {
-      for (int y = 0; y < height; y++) {
-        int index = (int) calculateMorton2D(x, y);
-        //System.out.println("Index: " + index);
-        if (index >= maxPos) {
-          continue;
-        }
-
-        //outBytes[outPos] = bytes[index*4:index*4+4];
-        System.arraycopy(bytes, index * blockSize, outBytes, outPos, blockSize);
-        outPos += blockSize;
-      }
-    }
-
-    return outBytes;
-  }
-
-  /**
-   **********************************************************************************************
-  Un-swizzles (Morton Code) an image
-  Based on puyotools --> Libraries/GimSharp/GimTexture/GimDataCodec.cs --> UnSwizzle()
-   **********************************************************************************************
-   **/
-  public static int[] unswizzle(int[] bytes, int width, int height, int blockSize) {
-
-    int numBytes = bytes.length;
-    int[] outBytes = new int[numBytes];
-
-    int maxPos = numBytes / blockSize;
-
-    int outPos = 0;
-
-    for (int x = 0; x < width; x++) {
-      for (int y = 0; y < height; y++) {
-        int index = (int) calculateMorton2D(x, y);
-        //System.out.println("Index: " + index);
-        if (index >= maxPos) {
-          continue;
-        }
-
-        //outBytes[outPos] = bytes[index*4:index*4+4];
-        System.arraycopy(bytes, index * blockSize, outBytes, outPos, blockSize);
-        outPos += blockSize;
-      }
-    }
-
-    return outBytes;
-  }
-
-  /**
-   **********************************************************************************************
-  Swizzles (Morton Code) an image
-  Based on puyotools --> Libraries/GimSharp/GimTexture/GimDataCodec.cs --> UnSwizzle()
-   **********************************************************************************************
-   **/
-  public static int[] swizzle(int[] bytes, int width, int height, int blockSize) {
-
-    int numBytes = bytes.length;
-    int[] outBytes = new int[numBytes];
-
-    int maxPos = numBytes / blockSize;
-
-    int outPos = 0;
-
-    for (int x = 0; x < width; x++) {
-      for (int y = 0; y < height; y++) {
-        int index = (int) calculateMorton2D(x, y);
-        if (index >= maxPos) {
-          continue;
-        }
-
-        //System.arraycopy(bytes, index * blockSize, outBytes, outPos, blockSize);
-        System.arraycopy(bytes, outPos, outBytes, index * blockSize, blockSize);
-        outPos += blockSize;
-      }
-    }
-
-    return outBytes;
-  }
-
-  /**
-   **********************************************************************************************
-  Un-swizzles an image for the PS2
-   **********************************************************************************************
-   **/
-  public static byte[] unswizzlePS2(byte[] bytes, int width, int height) {
-
-    // Make a copy of the swizzled input
-    int dataLength = bytes.length;
-    byte[] swizzled = new byte[dataLength];
-    System.arraycopy(bytes, 0, swizzled, 0, dataLength);
-
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        int block_location = (y & (~0xf)) * width + (x & (~0xf)) * 2;
-        int swap_selector = (((y + 2) >> 2) & 0x1) * 4;
-        int posY = (((y & (~3)) >> 1) + (y & 1)) & 0x7;
-        int column_location = posY * width * 2 + ((x + swap_selector) & 0x7) * 4;
-
-        int byte_num = ((y >> 1) & 1) + ((x >> 2) & 2); // 0,1,2,3
-
-        bytes[(y * width) + x] = swizzled[block_location + column_location + byte_num];
-      }
-    }
-
-    return bytes;
-  }
-
-  /**
-   **********************************************************************************************
-  Un-swizzles an image for the Switch
-   **********************************************************************************************
-   **/
-  public static byte[] unswizzleSwitch(byte[] bytes, int width, int height) {
-    return NintendoSwitchSwizzleHelper.unswizzle(bytes, width, height);
-  }
-
-  /**
-   **********************************************************************************************
-  Un-swizzles an image for the PS2
-   **********************************************************************************************
-   **/
-  public static int[] unswizzlePS2(int[] bytes, int width, int height) {
-
-    // Make a copy of the swizzled input
-    int dataLength = bytes.length;
-    int[] swizzled = new int[dataLength];
-    System.arraycopy(bytes, 0, swizzled, 0, dataLength);
-
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        int block_location = (y & (~0xf)) * width + (x & (~0xf)) * 2;
-        int swap_selector = (((y + 2) >> 2) & 0x1) * 4;
-        int posY = (((y & (~3)) >> 1) + (y & 1)) & 0x7;
-        int column_location = posY * width * 2 + ((x + swap_selector) & 0x7) * 4;
-
-        int byte_num = ((y >> 1) & 1) + ((x >> 2) & 2); // 0,1,2,3
-
-        bytes[(y * width) + x] = swizzled[block_location + column_location + byte_num];
-      }
-    }
-
-    return bytes;
-  }
-
-  /**
-   **********************************************************************************************
-  Un-swizzles an image for the Nintendo Switch
-  https://github.com/gdkchan/BnTxx/blob/master/BnTxx/BlockLinearSwizzle.cs
-   **********************************************************************************************
-   **/
-  /*  public static int[] unswizzleSwitch565(byte[] swizzled, int width, int height) {
-  
-  
-    int[] output = new int[width * height];
-  
-    int OOffset = 0;
-  
-    int Bpp = 2;
-    int BlockHeight = 1; // 16
-    int BhMask = (BlockHeight * 8) - 1;
-  
-    int BhShift = CountLsbZeros(BlockHeight * 8);
-    int BppShift = CountLsbZeros(Bpp);
-  
-    int WidthInGobs = (int) (width * Bpp / 64f);
-  
-    int GobStride = 512 * BlockHeight * WidthInGobs;
-  
-    int XShift = CountLsbZeros(512 * BlockHeight);
-  
-    for (int Y = 0; Y < height; Y++) {
-      for (int X = 0; X < width; X++) {
-        int IOffs = GetSwitchSwizzleOffset(X, Y, BppShift, BhShift, GobStride, XShift, BhMask);
-  
-        int Value = swizzled[IOffs + 0] << 0 |
-            swizzled[IOffs + 1] << 8;
-  
-        int R = ((Value >> 0) & 0x1f) << 3;
-        int G = ((Value >> 5) & 0x3f) << 2;
-        int B = ((Value >> 11) & 0x1f) << 3;
-  
-        B = (B | (B >> 5));
-        G = (G | (G >> 6));
-        R = (R | (R >> 5));
-        int A = 255;
-  
-        // OUTPUT = ARGB
-        output[OOffset] = ((R << 16) | (G << 8) | B | (A << 24));
-        OOffset++;
-      }
-    }
-  
-    return output;
-  }
-  */
-  /**
-   * For Switch Swizzle
-   */
-  /*private static int CountLsbZeros(int Value) {
-    int Count = 0;
-  
-    while (((Value >> Count) & 1) == 0) {
-      Count++;
-    }
-  
-    return Count;
-  }
-  */
-  /**
-   * For Switch Swizzle
-   */
-  /*public static int GetSwitchSwizzleOffset(int X, int Y, int BppShift, int BhShift, int GobStride, int XShift, int BhMask) {
-    X <<= BppShift;
-  
-    int Position = (Y >> BhShift) * GobStride;
-  
-    Position += (X >> 6) << XShift;
-  
-    Position += ((Y & BhMask) >> 3) << 9;
-  
-    Position += ((X & 0x3f) >> 5) << 8;
-    Position += ((Y & 0x07) >> 1) << 6;
-    Position += ((X & 0x1f) >> 4) << 5;
-    Position += ((Y & 0x01) >> 0) << 4;
-    Position += ((X & 0x0f) >> 0) << 0;
-  
-    return Position;
-  }
-  */
-
-  /**
-   **********************************************************************************************
-  Un-swizzles an image for the GameCube
-  https://pastebin.com/VDvs7q8Y
-   **********************************************************************************************
-   **/
-  /* public static int[] unswizzleGameCube(int[] bytes, int width, int height, int pitch) {
-  
-    // Make a copy of the swizzled input
-    int dataLength = bytes.length;
-    int[] swizzled = new int[dataLength];
-    System.arraycopy(bytes, 0, swizzled, 0, dataLength);
-  
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-  
-        int bpp = 16;
-  
-        int rowOffset = y * pitch;
-        int pixOffset = x;
-  
-        int pos = (rowOffset + pixOffset) * bpp;
-        pos /= 8;
-  
-        bpp /= 8;
-  
-        int pos2 = (y * width + x) * bpp;
-        if ((pos2 < dataLength) && (pos < dataLength)) {
-          //swizzled[pos2:pos2 + bpp] = bytes[pos:pos + bpp];
-          System.arraycopy(swizzled, pos, bytes, pos2, bpp);
-        }
-      }
-    }
-  
-    return bytes;
-  }
-  */
 
   /**
    **********************************************************************************************

@@ -46,6 +46,31 @@ public class NintendoSwitchSwizzleHelper {
     return deswizzle(width, height, depth, bpp, tileMode, size_range, bytes);
   }
 
+  public static byte[] swizzle(byte[] bytes, int width, int height) {
+    int depth = 1;
+
+    int bpp = 4;
+
+    int tileMode = 0;
+    //int size_range = 4;//(int)Math.Max(0, BlockHeightLog2 - blockHeightShift);
+    int size_range = GetBlockHeight(height);
+
+    if (size_range == 16) {
+      size_range = 4;
+    }
+    else if (size_range == 8) {
+      size_range = 3;
+    }
+    else if (size_range == 4) {
+      size_range = 2; // guess
+    }
+    else {
+      size_range = 1; // guess
+    }
+
+    return swizzle(width, height, depth, bpp, tileMode, size_range, bytes);
+  }
+
   /*---------------------------------------
    * 
    * Code ported from AboodXD's BNTX Extractor https://github.com/aboood40091/BNTX-Extractor/blob/master/swizzle.py

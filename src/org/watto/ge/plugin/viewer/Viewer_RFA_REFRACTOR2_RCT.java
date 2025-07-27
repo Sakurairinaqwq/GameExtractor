@@ -23,6 +23,7 @@ import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageFormatWriter;
 import org.watto.ge.helper.ImageManipulator;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -200,7 +201,7 @@ public class Viewer_RFA_REFRACTOR2_RCT extends ViewerPlugin {
         imageResource = ImageFormatReader.readBGRA(fm, width, height);
 
         if (swizzle == 0) {
-          imageResource.setPixels(ImageFormatReader.unswizzle(imageResource.getPixels(), width, height, 1));
+          imageResource.setPixels(ImageSwizzler.unswizzle(imageResource.getPixels(), width, height, 1));
         }
       }
       else {

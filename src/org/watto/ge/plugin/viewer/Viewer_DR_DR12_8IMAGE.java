@@ -21,6 +21,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -193,7 +194,7 @@ public class Viewer_DR_DR12_8IMAGE extends ViewerPlugin {
         }
 
         // un-stripe the palette
-        palette = ImageFormatReader.unstripePalettePS2(palette);
+        palette = ImageSwizzler.unstripePalettePS2(palette);
         /*
         int parts = palette.length / 32;
         int stripes = 2;

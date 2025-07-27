@@ -20,6 +20,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.helper.PaletteGenerator;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -326,7 +327,7 @@ public class Viewer_HGO_HGOF_TXM0_TXM0 extends ViewerPlugin {
         if (imageResource != null) {
           //if (width != 64 && width != 256) {
           if (swizzleFlag == 0) {
-            imageResource.setPixels(ImageFormatReader.unswizzlePS2(imageResource.getPixels(), width, height));
+            imageResource.setPixels(ImageSwizzler.unswizzlePS2(imageResource.getPixels(), width, height));
           }
         }
 

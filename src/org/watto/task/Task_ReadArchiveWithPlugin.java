@@ -15,7 +15,9 @@
 package org.watto.task;
 
 import java.io.File;
+
 import javax.swing.SwingUtilities;
+
 import org.watto.ChangeMonitor;
 import org.watto.ErrorLogger;
 import org.watto.Language;
@@ -103,6 +105,15 @@ public class Task_ReadArchiveWithPlugin extends AbstractTask {
       }
 
       if (path.isDirectory()) {
+        if (!withinThread) {
+          WSPopup.showError("ReadArchive_FileNotAnArchive", true);
+        }
+        result = false;
+        return;
+      }
+
+      // [3.16.0001] if the file is empty, don't even bother trying to open it
+      if (path.length() == 0) {
         if (!withinThread) {
           WSPopup.showError("ReadArchive_FileNotAnArchive", true);
         }

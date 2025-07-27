@@ -685,6 +685,7 @@ public class PreviewPanel_3DModel extends PreviewPanel implements WSSelectableIn
     triangleMesh = null;
     meshView = null;
     snapshotImage = null;
+
     scene = null;
     snapshotImage = null;
     snapshotWidth = 0;

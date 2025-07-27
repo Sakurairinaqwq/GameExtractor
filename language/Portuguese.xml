@@ -1,6 +1,6 @@
 <languagePack>
 	<name>Portuguese</name>
-	<version>3.16</version>
+	<version>3.16.0001</version>
 	<author>
 		<name>Lucas Oliveira</name>
 		<email>lucasaddam@gmail.com</email>
@@ -1080,7 +1080,7 @@
 		<lang code="WSTextField_MaxAllowedScriptErrors_Label" value="Numero maximo de erros de script" />
 		<lang code="WSTextField_MaxAllowedScriptErrors_Tooltip" value="O numero maximo de erros que um script pode fazer antes do Game Extractor deixar de executa-lo." />
 		
-		<lang code="WSTextField_PreviewPanel_ImageInvestigator_OffsetField_Label" value="Data Offset" />
+		<lang code="WSTextField_PreviewPanel_ImageInvestigator_OffsetField_Label" value="Image Data Offset" />
 		<lang code="WSTextField_PreviewPanel_ImageInvestigator_OffsetField_Tooltip" value="O deslocamento no arquivo para o inicio dos dados da imagem" />
 		<lang code="WSTextField_PreviewPanel_ImageInvestigator_WidthField_Label" value="Width" />
 		<lang code="WSTextField_PreviewPanel_ImageInvestigator_WidthField_Tooltip" value="A largura da imagem" />
@@ -1610,6 +1610,16 @@
 
 		<lang code="WSCheckBox_UnityMeshExtendedErrorChecking_Text" value="Unity Mesh Enhanced Error Checking" />
 		<lang code="WSCheckBox_UnityMeshExtendedErrorChecking_Tooltip" value="Tick to validate Unity meshes (provides better chance of rendering meshes correctly)" />
+		
+		
+<!-- New with 3.16.0001 -->
+
+		<lang code="WSPanel_PreviewPanel_ImageInvestigator_SwizzleFormatChooserLabel_Label" value="Swizzle" />
+		<lang code="WSPanel_PreviewPanel_ImageInvestigator_SwizzleFormatChooserLabel_Tooltip" value="The type of swizzle to perform on the image data" />
+		<lang code="ResourceProperty_BitsPerPixel" value="Bits Per Pixel" />
+		
+		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Text" value="Strip" />
+		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Tooltip" value="Whether face indeces should be read as a triangle strip (ticked) or as individual triangles (unticked)" />
 		
 		<lang code="" value="" />
 		

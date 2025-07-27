@@ -22,8 +22,10 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FileFilter;
 import java.util.Arrays;
+
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComponent;
+
 import org.watto.ErrorLogger;
 import org.watto.Language;
 import org.watto.Settings;
@@ -198,14 +200,6 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
    **/
   public void changeControls(String controlName, boolean fullVersionOnly) {
 
-    boolean fullVersion = true;
-    if (fullVersionOnly) {
-      if (!checkFullVersion(false)) {
-        //return;
-        fullVersion = false;
-      }
-    }
-
     WSPanel newControl = currentControl;
 
     // reset the filter on the directoryList
@@ -232,16 +226,6 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
     }
     else if (controlName.equals("WritePanel")) {
       newControl = writeControls;
-      if (fullVersion) {
-        loadWritePlugins();
-        setPluginFilter("SidePanel_DirectoryList_WritePluginList", "CurrentSelectedWritePlugin", false);
-        if (!Archive.getReadPlugin().canWrite() && !Archive.getReadPlugin().canReplace()) {
-          invalid = true;
-        }
-        else {
-          setWriteFilename(dirHolder.getSelectedFile());
-        }
-      }
     }
     else if (controlName.equals("CutPanel")) {
       newControl = cutControls;
@@ -316,7 +300,7 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
   **********************************************************************************************
   **/
   public boolean checkFullVersion() {
-    return checkFullVersion(true);
+    return false;
   }
 
   /**
@@ -325,11 +309,7 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
   **********************************************************************************************
   **/
   public boolean checkFullVersion(boolean showPopup) {
-      // basic version
-      if (showPopup) {
-        WSPopup.showErrorInNewThread("FullVersionOnly", true);
-      }
-      return false;
+    return false;
   }
 
   /**
@@ -692,7 +672,10 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
 
     int numConverters = imageConverters.length + modelConverters.length;
     if (numConverters == 2) {
-      return new ViewerPlugin[] { imageConverters[0], modelConverters[0] };
+      // [3.16.0001] The order here matters. When we convert, it picks the first matching plugin and uses that. Meshes can often be exported as images,
+      // so if we do the imageConverter first, it'll convert successfully with, say, PNG_PNG, and then ignore the modelConverter.
+      // Meshes can be converted to images, but images can't be converted to meshes... therefore, try the modelConverter first, *then* try imageConverter.
+      return new ViewerPlugin[] { modelConverters[0], imageConverters[0] };
     }
     else if (numConverters == 1) {
       if (imageConverters.length == 1) {
@@ -812,16 +795,9 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
     scriptControls = (WSPanel) WSHelper.toComponent(XMLReader.read(new File("interface" + File.separator + "SidePanel_DirectoryList_ScriptPanel.xml")));
     exportControls = (WSPanel) WSHelper.toComponent(XMLReader.read(new File("interface" + File.separator + "SidePanel_DirectoryList_ExtractPanel.xml")));
 
-    if (checkFullVersion(false)) {
-      // full version panels
-      modifyControls = (WSPanel) WSHelper.toComponent(XMLReader.read(new File("interface" + File.separator + "SidePanel_DirectoryList_ModifyPanel.xml")));
-      writeControls = (WSPanel) WSHelper.toComponent(XMLReader.read(new File("interface" + File.separator + "SidePanel_DirectoryList_WritePanel.xml")));
-    }
-    else {
       // basic panels
       modifyControls = (WSPanel) WSHelper.toComponent(XMLReader.read("<WSPanel code=\"SidePanel_DirectoryList_ModifyPanel_Main\" showBorder=\"true\" layout=\"BorderLayout\"><WSLabel code=\"SidePanel_DirectoryList_ModifyPanel_Basic\" wrap=\"true\" vertical-alignment=\"true\" height=\"80\" position=\"CENTER\" /></WSPanel>"));
       writeControls = (WSPanel) WSHelper.toComponent(XMLReader.read("<WSPanel code=\"SidePanel_DirectoryList_WritePanel_Main\" showBorder=\"true\" layout=\"BorderLayout\"><WSLabel code=\"SidePanel_DirectoryList_WritePanel_Basic\" wrap=\"true\" vertical-alignment=\"true\" height=\"80\" position=\"CENTER\" /></WSPanel>"));
-    }
 
     cutControls = (WSPanel) WSHelper.toComponent(XMLReader.read(new File("interface" + File.separator + "SidePanel_DirectoryList_CutPanel.xml")));
 
@@ -918,7 +894,6 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
       return;
     }
 
-    if (!checkFullVersion(false)) {
       // Not the full version - there's no converters available.
       // Load a dummy plugin that says "only in full version"
       NoConversionPlugin plugin = new NoConversionPlugin();
@@ -927,43 +902,6 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
       ViewerPlugin[] plugins = new ViewerPlugin[] { plugin };
       pluginList.setModel(new DefaultComboBoxModel(plugins));
       return;
-    }
-
-    ViewerPlugin[] plugins = PluginListBuilder.getWriteViewers(convertType);
-    if (plugins == null || plugins.length <= 0) {
-      return;
-    }
-
-    // If we only want to show standard converters, remove the non-standard ones here
-    if (Settings.getBoolean("OnlyShowStandardConverters")) {
-      int writePos = 0;
-
-      int numPlugins = plugins.length;
-      for (int i = 0; i < numPlugins; i++) {
-        if (plugins[i].isStandardFileFormat()) {
-          plugins[writePos] = plugins[i];
-          writePos++;
-        }
-      }
-
-      ViewerPlugin[] oldPlugins = plugins;
-      plugins = new ViewerPlugin[writePos];
-      System.arraycopy(oldPlugins, 0, plugins, 0, writePos);
-    }
-
-    // Sort the plugins by name
-    Arrays.sort(plugins);
-
-    // add a "No Conversion" option to the plugins
-    int numViewerPlugins = plugins.length;
-    ViewerPlugin[] oldPlugins = plugins;
-    plugins = new ViewerPlugin[numViewerPlugins + 1];
-    System.arraycopy(oldPlugins, 0, plugins, 1, numViewerPlugins);
-    plugins[0] = new NoConversionPlugin();// add the No Conversion plugin to the top of the list
-
-    pluginList.setModel(new DefaultComboBoxModel(plugins));
-
-    return;
   }
 
   /**
@@ -1108,34 +1046,16 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
         readScriptArchive();
       }
       else if (code.equals("SidePanel_DirectoryList_AddFileButton")) {
-        if (checkFullVersion()) {
-          addFiles();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_RemoveFileButton")) {
-        if (checkFullVersion()) {
-          removeFiles();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_ReplaceFileSelectedButton")) {
-        if (checkFullVersion()) {
-          replaceSelectedFiles();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_ReplaceFileMatchingButton")) {
-        if (checkFullVersion()) {
-          replaceMatchingFiles();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_WriteArchiveButton")) {
-        if (checkFullVersion()) {
-          writeArchive();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_ConvertArchiveButton")) {
-        if (checkFullVersion()) {
-          convertArchive();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_ExportAllButton")) {
         exportAllFiles();
@@ -1144,9 +1064,6 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
         exportSelectedFiles();
       }
       else if (code.equals("SidePanel_DirectoryList_ScanArchiveButton")) {
-        if (checkFullVersion()) {
-          scanArchive();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_CutArchiveButton")) {
         cutArchive();
@@ -1274,9 +1191,6 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
 
         // modify (add)
         else if (currentControl == modifyControls) {
-          if (checkFullVersion(false)) {
-            addFiles();
-          }
           return true;
         }
         else if (currentControl == exportControls) {
@@ -1310,9 +1224,6 @@ public class SidePanel_DirectoryList extends WSPanelPlugin implements WSSelectab
         exportAllFiles();
       }
       else if (code.equals("SidePanel_DirectoryList_WriteFilenameField")) {
-        if (checkFullVersion()) {
-          writeArchive();
-        }
       }
       else if (code.equals("SidePanel_DirectoryList_CutInputFilenameField")) {
         ((WSTextField) ComponentRepository.get("SidePanel_DirectoryList_CutOutputFilenameField")).requestFocus();

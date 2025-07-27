@@ -91,16 +91,7 @@ public class PreviewPanel_Text extends PreviewPanel implements WSSelectableInter
     }
 
     try {
-      ArchivePlugin archivePlugin = Archive.getReadPlugin();
-      if (archivePlugin != null) {
-        if (archivePlugin.canWrite() || archivePlugin.canReplace() || archivePlugin.canImplicitReplace()) {
-
-
-        }
-        else {
           preview.setEditable(false);
-        }
-      }
     }
     catch (Throwable t) {
       preview.setEditable(false);

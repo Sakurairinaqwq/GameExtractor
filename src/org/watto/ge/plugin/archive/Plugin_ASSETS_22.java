@@ -55,7 +55,8 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
 
     setGames("Zoria: Age of Shattering: Prologue");
 
-    setExtensions("assets"); // MUST BE LOWER CASE
+    // [3.16.0001] sharedAssets new with Fashion Police Squad game 
+    setExtensions("assets", "sharedassets"); // MUST BE LOWER CASE
     setPlatforms("PC");
 
     setFileTypes(Unity3DHelper.getFileTypes());
@@ -410,8 +411,10 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
         unityFS = true;
 
         // 8 - Header ("UnityFS" + null)
+        fm.skip(1);
+
         // 4 - Version Number (6) (BIG ENDIAN)
-        fm.skip(5);
+        int version = IntConverter.changeFormat(fm.readInt());
 
         // X - General Version String (5.x.x)
         // 1 - null Terminator
@@ -461,6 +464,8 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
           // the directory is at the end of the file
           fm.seek(arcLength - compDataHeaderSize);
         }
+
+        long dirStartOffset = fm.getOffset();
 
         if ((flags & 3) == 3) {
 
@@ -516,6 +521,35 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
             // 4 - Number of Storage Blocks
             numBlocks = IntConverter.changeFormat(fmDir.readInt());
           }
+          if (numBlocks == 0 && version == 8) {
+            // [3.16.0001] still probably didn't decompress properly - some in version 8 have a 4-byte null before the compressed data, try that (Undying)
+            fm.seek(dirStartOffset);
+
+            // 4 - null
+            fm.skip(4);
+
+            usePaddedOffsets = true;
+
+            dirBytes = new byte[decompDataHeaderSize];
+            decompWritePos = 0;
+            exporter = Exporter_LZ4.getInstance();
+            exporter.open(fm, compDataHeaderSize, decompDataHeaderSize);
+
+            for (int b = 0; b < decompDataHeaderSize; b++) {
+              if (exporter.available()) { // make sure we read the next bit of data, if required
+                dirBytes[decompWritePos++] = (byte) exporter.read();
+              }
+            }
+
+            // open the decompressed data for processing
+            fmDir = new FileManipulator(new ByteBuffer(dirBytes));
+
+            // 16 - Unknown
+            fmDir.skip(16);
+
+            // 4 - Number of Storage Blocks
+            numBlocks = IntConverter.changeFormat(fmDir.readInt());
+          }
           FieldValidator.checkNumFiles(numBlocks);
 
           int[] blockDecompLengths = new int[numBlocks];
@@ -538,6 +572,9 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
 
           if (numBlocks == 1 && blockCompLengths[0] == blockDecompLengths[0]) {
             // raw block, read where it is (Surviving the Aftermath)
+
+            // [3.16.0001] Confirmed with "Wizard of Legend" and "Astrea Six Sided Oracles" (subtract from the end of the archive)
+            currentOffset = arcSize - blockDecompLengths[0];
           }
           else if (usePaddedOffsets) {
             while (fm.getOffset() < arcSize) {
@@ -554,10 +591,19 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
 
           }
 
-          // Decompress the file from the blocks
-          FileManipulator decompFM = decompressLZ4Archive(fm, (int) currentOffset, blockCompLengths, blockDecompLengths);
-          if (decompFM == null) {
-            return null; // couldn't decompress the file for some reason
+          FileManipulator decompFM = null;
+          long relativeOffsetInDecomp = 0;
+          if (numBlocks == 1 && blockCompLengths[0] == blockDecompLengths[0]) {
+            // single raw file
+            decompFM = fm;
+            relativeOffsetInDecomp = currentOffset;
+          }
+          else {
+            // Decompress the file from the blocks
+            decompFM = decompressLZ4Archive(fm, (int) currentOffset, blockCompLengths, blockDecompLengths);
+            if (decompFM == null) {
+              return null; // couldn't decompress the file for some reason
+            }
           }
 
           // 4 - Number of Bundle Entries
@@ -570,18 +616,37 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
           long initialOffset = fm.getOffset();
           // now we want to split the decompressed file into separate files for each entry
           File[] splitFiles = new File[numEntries];
-          for (int e = 0; e < numEntries; e++) {
-            // 8 - Offset
-            //long entryOffset = LongConverter.changeFormat(fmDir.readLong());
-            fmDir.skip(4);
-            long entryOffset = IntConverter.changeFormat(fmDir.readInt());
-            //FieldValidator.checkOffset(entryOffset, arcSize);
 
-            // 8 - Decomp Length
-            //long entryLength = LongConverter.changeFormat(fmDir.readLong());
-            fmDir.skip(4);
-            long entryLength = IntConverter.unsign(IntConverter.changeFormat(fmDir.readInt()));
-            //FieldValidator.checkLength(entryLength, arcSize);
+          // [3.16.0001] support splitting archives that are larger than 2GB in size
+          boolean needLongOffsets = ((decompFM.getFile().length() >> 31) > 0);
+
+          for (int e = 0; e < numEntries; e++) {
+
+            long entryOffset = 0;
+            long entryLength = 0;
+
+            if (needLongOffsets) {
+              // 8 - Offset
+              byte[] offsetBytes = fmDir.readBytes(8);
+              entryOffset = LongConverter.convertBig(offsetBytes) + relativeOffsetInDecomp; // +relativeOffsetInDecomp so that we can keep the original archive if it's just a single raw block
+
+              // 8 - Decomp Length
+              byte[] decompLengthBytes = fmDir.readBytes(8);
+              entryLength = LongConverter.convertBig(decompLengthBytes);
+            }
+            else {
+              // 8 - Offset
+              //long entryOffset = LongConverter.changeFormat(fmDir.readLong());
+              fmDir.skip(4);
+              entryOffset = IntConverter.changeFormat(fmDir.readInt()) + relativeOffsetInDecomp; // +relativeOffsetInDecomp so that we can keep the original archive if it's just a single raw block
+              //FieldValidator.checkOffset(entryOffset, arcSize);
+
+              // 8 - Decomp Length
+              //long entryLength = LongConverter.changeFormat(fmDir.readLong());
+              fmDir.skip(4);
+              entryLength = IntConverter.unsign(IntConverter.changeFormat(fmDir.readInt()));
+              //FieldValidator.checkLength(entryLength, arcSize);
+            }
 
             // 4 - Flags
             int entryFlags = IntConverter.changeFormat(fmDir.readInt());
@@ -737,6 +802,7 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
           for (int b = 0; b < numBases; b++) {
             // 4 - ID Number?
             int baseID = fm.readInt();
+
             if (baseID == baseToCheck) {
               // 35 - Base Name (encrypted)
               fm.skip(skipLarge);
@@ -789,7 +855,7 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
               }
 
               // 4 - Filename Directory Length
-              //System.out.println(fm.getOffset());
+              //System.out.println(fm.getOffset() + "\tNumEntries=" + numEntries);
               int filenameDirLength = fm.readInt();
               FieldValidator.checkLength(filenameDirLength, arcSize);
 
@@ -813,12 +879,24 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
               fm.skip(filenameDirLength);
 
               // 4 - null (check for a 32-byte directory)
-              if (fm.readInt() != 0) {
+              // [3.16.0001] Found some games where the checkField is a 1 followed by a 0/1 (Fashion Police Squad)
+              int checkField = fm.readInt();
+              if (checkField != 0 && checkField != 1) {
                 // wasn't 32-byte, try 24-byte (the old standard)
                 fm.relativeSeek(preFilenameBlockOffset);
 
                 fm.skip(numEntries * 24);
                 fm.skip(filenameDirLength);
+              }
+              if (checkField == 1) {
+                checkField = fm.readInt();
+                if (checkField != 0 && checkField != 1) {
+                  // wasn't 32-byte, try 24-byte (the old standard)
+                  fm.relativeSeek(preFilenameBlockOffset);
+
+                  fm.skip(numEntries * 24);
+                  fm.skip(filenameDirLength);
+                }
               }
 
             }
@@ -830,11 +908,11 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
 
           // 4 - Number of Files
           numFiles = fm.readInt();
-          if (numFiles < 8) {
+          if (numFiles < 10) {
             FieldValidator.checkNumFiles(numFiles);
           }
           else {
-            FieldValidator.checkNumFiles(numFiles / 8);
+            FieldValidator.checkNumFiles(numFiles / 10);
           }
 
           // 0-3 - null to a multiple of 4 bytes
@@ -986,10 +1064,20 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
           resource.setName(Resource.generateFilename(i) + fileType);
           continue;
         }
-        FieldValidator.checkFilenameLength(filenameLength);
+
+        boolean filenameCheck = false;
+        try {
+          FieldValidator.checkFilenameLength(filenameLength);
+        }
+        catch (Throwable t) {
+          filenameCheck = true;
+        }
 
         // X - Filename
         String filename = fm.readString(filenameLength);
+        if (filenameCheck && filename.startsWith("_ColorRampTexGradientTex{")) { // [3.16.0001] Astrea Six Sided Oracles
+          filename = Resource.generateFilename(i) + fileType;
+        }
         FieldValidator.checkFilename(filename);
 
         // 0-3 - null Padding to 4 bytes
@@ -1086,12 +1174,14 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
         }
         else if (fileType.equals(".Texture2D")) {
           try {
+            //System.out.println(fm.getOffset());
             // 4 - Width/Height? (1024)
             int imageWidth = fm.readInt();
 
             // 4 - Width/Height? (1024/512)
             int imageHeight = fm.readInt();
 
+            boolean forceExternal = false;
             if (imageWidth == 4 && (imageHeight == 0 || imageHeight == 256)) {
               // these 2 fields were an 8-byte header, so need to read the real width/height next (GWENT game)
               // 4+256 = some newer v22 games like While True Learn
@@ -1101,6 +1191,13 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
 
               // 4 - Width/Height? (1024/512)
               imageHeight = fm.readInt();
+            }
+            else if (imageWidth == 0 || imageWidth == 1) {
+              // [3.16.0001] Deadtime Defenders - Unity v22 6000.0.40f1
+              // Had a 4-byte null at the beginning of each Texture2D file only, for some reason
+              imageWidth = imageHeight;
+              imageHeight = fm.readInt();
+              forceExternal = true;
             }
 
             // 4 - File Size
@@ -1115,7 +1212,7 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
             // 4 - Mipmap Count
             int mipmapCount = fm.readInt();
 
-            if (resource.getLength() - imageFileSize > 0) {
+            if (!forceExternal && resource.getLength() - imageFileSize > 0) {
               // This file is in the existing archive, not a separate archive file
 
               //System.out.println("INT" + fm.getOffset());
@@ -1196,19 +1293,39 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
                 // the first 4 bytes are null, the next 4 bytes are part of the offset
                 extOffset = fm.readInt() | extOffset >> 32;
               }
+              if (extOffset < 0) {
+                // [3.16.0001] archive is probably larger than 2GB
+                extOffset = IntConverter.unsign((int) extOffset);
+              }
 
               // 4 - File Length
               int extSize = fm.readInt();
               if (extSize != imageFileSize) {
                 extOffset = extSize;
+                if (extOffset < 0) {
+                  // [3.16.0001] archive is probably larger than 2GB
+                  extOffset = IntConverter.unsign((int) extOffset);
+                }
                 extSize = fm.readInt();
 
                 if (extSize != imageFileSize) {
                   extOffset = extSize;
+                  if (extOffset < 0) {
+                    // [3.16.0001] archive is probably larger than 2GB
+                    extOffset = IntConverter.unsign((int) extOffset);
+                  }
                   extSize = fm.readInt();
 
                   if (extSize != imageFileSize) {
-                    if (extSize != 0) { // if extSize=0, the extOffset is probably a 8-byte value, so keep the extOffset
+                    if (extOffset < 0) {
+                      // [3.16.0001] archive is probably larger than 2GB
+                      extOffset = IntConverter.unsign((int) extOffset);
+                    }
+                    if (extSize > 0 && extSize <= 5) {
+                      // [3.16.0001] extSize is probably part of the offset (as an 8-byte field)
+                      extOffset = ((long) extSize) << 32 | extOffset;
+                    }
+                    else if (extSize != 0) { // if extSize=0, the extOffset is probably a 8-byte value, so keep the extOffset
                       extOffset = extSize;
                     }
                     extSize = fm.readInt();
@@ -1223,6 +1340,10 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
               }
               catch (Throwable t) {
                 extOffset = extSize;
+                if (extOffset < 0) {
+                  // [3.16.0001] archive is probably larger than 2GB
+                  extOffset = IntConverter.unsign((int) extOffset);
+                }
                 extSize = externalFilenameLength;
 
                 externalFilenameLength = fm.readInt();

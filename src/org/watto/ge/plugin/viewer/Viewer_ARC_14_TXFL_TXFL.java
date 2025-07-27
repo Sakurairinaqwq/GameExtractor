@@ -26,6 +26,7 @@ import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageFormatWriter;
 import org.watto.ge.helper.ImageManipulator;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -277,7 +278,7 @@ public class Viewer_ARC_14_TXFL_TXFL extends ViewerPlugin {
           // no swizzle
         }
         else {
-          imageResource.setPixels(ImageFormatReader.unswizzle(imageResource.getImagePixels(), width, height, 2));
+          imageResource.setPixels(ImageSwizzler.unswizzle(imageResource.getImagePixels(), width, height, 2));
         }
       }
       else if (imageFormat == 32) {
@@ -287,7 +288,7 @@ public class Viewer_ARC_14_TXFL_TXFL extends ViewerPlugin {
           // no swizzle
         }
         else {
-          imageResource.setPixels(ImageFormatReader.unswizzle(imageResource.getImagePixels(), width, height, 2));
+          imageResource.setPixels(ImageSwizzler.unswizzle(imageResource.getImagePixels(), width, height, 2));
         }
       }
       else if (imageFormat == 8200) {
@@ -317,7 +318,7 @@ public class Viewer_ARC_14_TXFL_TXFL extends ViewerPlugin {
           // no swizzle
         }
         else {
-          imageResource.setPixels(ImageFormatReader.unswizzle(imageResource.getImagePixels(), width, height, 2));
+          imageResource.setPixels(ImageSwizzler.unswizzle(imageResource.getImagePixels(), width, height, 2));
         }
       }
       else {
@@ -622,7 +623,7 @@ public class Viewer_ARC_14_TXFL_TXFL extends ViewerPlugin {
           else {
             int mipmapWidth = mipmap.getWidth();
             int mipmapHeight = mipmap.getHeight();
-            mipmap = new ImageResource(ImageFormatReader.swizzle(mipmap.getImagePixels(), mipmapWidth, mipmapHeight, 2), mipmapWidth, mipmapHeight);
+            mipmap = new ImageResource(ImageSwizzler.swizzle(mipmap.getImagePixels(), mipmapWidth, mipmapHeight, 2), mipmapWidth, mipmapHeight);
           }
 
           ImageFormatWriter.writeRGBA5551(fm, mipmap);
@@ -639,7 +640,7 @@ public class Viewer_ARC_14_TXFL_TXFL extends ViewerPlugin {
           else {
             int mipmapWidth = mipmap.getWidth();
             int mipmapHeight = mipmap.getHeight();
-            mipmap = new ImageResource(ImageFormatReader.swizzle(mipmap.getImagePixels(), mipmapWidth, mipmapHeight, 2), mipmapWidth, mipmapHeight);
+            mipmap = new ImageResource(ImageSwizzler.swizzle(mipmap.getImagePixels(), mipmapWidth, mipmapHeight, 2), mipmapWidth, mipmapHeight);
           }
 
           ImageFormatWriter.writeRGBA(fm, mipmap);
@@ -669,7 +670,7 @@ public class Viewer_ARC_14_TXFL_TXFL extends ViewerPlugin {
             // no swizzle
           }
           else {
-            pixels = ImageFormatReader.swizzle(pixels, mipmapWidth, mipmapHeight, 2);
+            pixels = ImageSwizzler.swizzle(pixels, mipmapWidth, mipmapHeight, 2);
           }
           int numPixels = pixels.length;
 

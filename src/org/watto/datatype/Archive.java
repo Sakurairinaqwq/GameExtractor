@@ -615,13 +615,12 @@ public class Archive {
   public static void setBasePath(File basePathNew) {
     basePath = basePathNew;
 
-
       if (basePath == null) {
         GameExtractor.getInstance().setTitle(Language.get("ProgramName_Free") + " " + Settings.get("Version") + " - http://www.watto.org");
       }
       else {
         GameExtractor.getInstance().setTitle(Language.get("ProgramName_Free") + " " + Settings.get("Version") + " [" + basePath.getName() + "]");
-      }
+    }
   }
 
   /**

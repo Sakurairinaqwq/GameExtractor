@@ -20,6 +20,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -39,7 +40,7 @@ public class Viewer_POD_POD5_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public Viewer_POD_POD5_TEX() {
@@ -53,7 +54,7 @@ public class Viewer_POD_POD5_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -63,7 +64,7 @@ public class Viewer_POD_POD5_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -196,7 +197,7 @@ public class Viewer_POD_POD5_TEX extends ViewerPlugin {
         //imageResource = ImageFormatReader.readDXT5Swizzled(fm, width, height);
 
         byte[] bytes = fm.readBytes(width * height);
-        bytes = ImageFormatReader.unswizzle(bytes, width, height, 16);
+        bytes = ImageSwizzler.unswizzle(bytes, width, height, 16);
 
         FileManipulator swizzledBuffer = new FileManipulator(new ByteBuffer(bytes));
         imageResource = ImageFormatReader.readDXT5(swizzledBuffer, width, height);
@@ -206,7 +207,7 @@ public class Viewer_POD_POD5_TEX extends ViewerPlugin {
       }
       else if (formatCode == 88) { // Swizzled BGRA
         byte[] bytes = fm.readBytes(width * height * 4);
-        bytes = ImageFormatReader.unswizzle(bytes, width, height, 4);
+        bytes = ImageSwizzler.unswizzle(bytes, width, height, 4);
 
         FileManipulator swizzledBuffer = new FileManipulator(new ByteBuffer(bytes));
         imageResource = ImageFormatReader.readBGRA(swizzledBuffer, width, height);

@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,6 +15,9 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
+import org.watto.Language;
+import org.watto.Settings;
 import org.watto.datatype.Archive;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -39,9 +42,10 @@ public class Plugin_SCH_SND extends ArchivePlugin {
     super("SCH_SND", "SCH_SND");
 
     //         read write replace rename
-    setProperties(true, false, false, false);
+    setProperties(true, false, true, false);
 
-    setGames("Conflict: Desert Storm");
+    setGames("Conflict: Desert Storm",
+        "The Great Escape");
     setExtensions("sch"); // MUST BE LOWER CASE
     setPlatforms("PC");
 
@@ -160,23 +164,65 @@ public class Plugin_SCH_SND extends ArchivePlugin {
   }
 
   /**
-  **********************************************************************************************
-  If an archive doesn't have filenames stored in it, the scanner can come here to try to work out
-  what kind of file a Resource is. This method allows the plugin to provide additional plugin-specific
-  extensions, which will be tried before any standard extensions.
-  @return null if no extension can be determined, or the extension if one can be found
-  **********************************************************************************************
-  **/
+   **********************************************************************************************
+   * Writes an [archive] File with the contents of the Resources. The archive is written using
+   * data from the initial archive - it isn't written from scratch.
+   **********************************************************************************************
+   **/
   @Override
-  public String guessFileExtension(Resource resource, byte[] headerBytes, int headerInt1, int headerInt2, int headerInt3, short headerShort1, short headerShort2, short headerShort3, short headerShort4, short headerShort5, short headerShort6) {
+  public void replace(Resource[] resources, File path) {
+    try {
 
-    /*
-    if (headerInt1 == 2037149520) {
-      return "js";
+      FileManipulator fm = new FileManipulator(path, true);
+      FileManipulator src = new FileManipulator(new File(Settings.getString("CurrentArchive")), false, 8); // small quick reads
+
+      int numFiles = resources.length;
+      TaskProgressManager.setMaximum(numFiles);
+
+      // Calculations
+      TaskProgressManager.setMessage(Language.get("Progress_PerformingCalculations"));
+
+      long archiveSize = 0;
+      for (int i = 0; i < numFiles; i++) {
+        archiveSize += resources[i].getDecompressedLength() + 8;
+      }
+
+      // Write Header Data
+
+      // 4 - Header ("SND" + null)
+      fm.writeBytes(src.readBytes(4));
+
+      // 4 - Archive Length [+8]
+      fm.writeInt(archiveSize);
+      src.skip(4);
+
+      // Write Files
+      TaskProgressManager.setMessage(Language.get("Progress_WritingFiles"));
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+        long length = resource.getDecompressedLength();
+
+        // 4 - File Type String (null terminated, filled with nulls)
+        fm.writeBytes(src.readBytes(4));
+
+        // 4 - File Length
+        int srcLength = src.readInt();
+        fm.writeInt(length);
+
+        // X - File Data
+        write(resource, fm);
+        src.skip(srcLength);
+
+        TaskProgressManager.setValue(i);
+      }
+
+      src.close();
+      fm.close();
+
     }
-    */
-
-    return null;
+    catch (Throwable t) {
+      logError(t);
+    }
   }
 
 }

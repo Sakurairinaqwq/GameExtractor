@@ -1,6 +1,6 @@
 <languagePack>
 	<name>English</name>
-	<version>3.16</version>
+	<version>3.16.0001</version>
 	<author>
 		<name>WATTO</name>
 		<email>watto@watto.org</email>
@@ -1083,7 +1083,7 @@
 		<lang code="WSTextField_MaxAllowedScriptErrors_Tooltip" value="The maximum number of errors a script can make before GameExtractor stops running it." />
 		
 		
-		<lang code="WSTextField_PreviewPanel_ImageInvestigator_OffsetField_Label" value="Data Offset" />
+		<lang code="WSTextField_PreviewPanel_ImageInvestigator_OffsetField_Label" value="Image Data Offset" />
 		<lang code="WSTextField_PreviewPanel_ImageInvestigator_OffsetField_Tooltip" value="The offset in the file to the start of the image data" />
 		<lang code="WSTextField_PreviewPanel_ImageInvestigator_WidthField_Label" value="Width" />
 		<lang code="WSTextField_PreviewPanel_ImageInvestigator_WidthField_Tooltip" value="The width of the image" />
@@ -1610,6 +1610,15 @@
 
 		<lang code="WSCheckBox_UnityMeshExtendedErrorChecking_Text" value="Unity Mesh Enhanced Error Checking" />
 		<lang code="WSCheckBox_UnityMeshExtendedErrorChecking_Tooltip" value="Tick to validate Unity meshes (provides better chance of rendering meshes correctly)" />
+		
+<!-- New with 3.16.0001 -->
+
+		<lang code="WSPanel_PreviewPanel_ImageInvestigator_SwizzleFormatChooserLabel_Label" value="Swizzle" />
+		<lang code="WSPanel_PreviewPanel_ImageInvestigator_SwizzleFormatChooserLabel_Tooltip" value="The type of swizzle to perform on the image data" />
+		<lang code="ResourceProperty_BitsPerPixel" value="Bits Per Pixel" />
+		
+		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Text" value="Strip" />
+		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Tooltip" value="Whether face indeces should be read as a triangle strip (ticked) or as individual triangles (unticked)" />
 		
 		<lang code="" value="" />
 		

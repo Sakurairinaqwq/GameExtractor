@@ -145,10 +145,14 @@ public class PreviewPanel_Audio extends PreviewPanel implements WSClickableInter
   **/
   @Override
   public void onCloseRequest() {
-    if (sound != null) {
-      sound.stop();
+    try {
+      if (sound != null) {
+        sound.stop();
+      }
+      sound.close();
     }
-    sound.close();
+    catch (Throwable t) {
+    }
     sound = null;
   }
 

@@ -132,6 +132,8 @@ public class PreviewPanel_MeshInvestigator extends PreviewPanel_Image implements
 
   WSPanel mainPanel = null;
 
+  WSCheckBox triangleStripCheckbox;
+
   /**
   **********************************************************************************************
   
@@ -159,6 +161,10 @@ public class PreviewPanel_MeshInvestigator extends PreviewPanel_Image implements
     faceBlockSizeField = new WSTextField(XMLReader.read("<WSTextField code=\"PreviewPanel_MeshInvestigator_FaceBlockSizeField\" showLabel=\"true\" opaque=\"false\" />"));
 
     uvOffsetField = new WSTextField(XMLReader.read("<WSTextField code=\"PreviewPanel_MeshInvestigator_UVOffsetField\" opaque=\"false\" />"));
+
+    // Checkboxes
+    triangleStripCheckbox = new WSCheckBox(XMLReader.read("<WSCheckBox code=\"PreviewPanel_MeshInvestigator_TriangleStripCheckbox\" horizontal-alignment=\"left\" opaque=\"false\" />"));
+    triangleStripCheckbox.setSelected(Settings.getBoolean("PreviewPanel_MeshInvestigator_TriangleStripCheckboxSelected"));
 
     // Buttons
     calculateUVButton = new WSButton(XMLReader.read("<WSButton code=\"PreviewPanel_MeshInvestigator_CalculateUVButton\" />"));
@@ -218,7 +224,12 @@ public class PreviewPanel_MeshInvestigator extends PreviewPanel_Image implements
     WSPanel facePanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"1\" columns=\"3\" showBorder=\"true\" showLabel=\"true\" code=\"PreviewPanel_MeshInvestigator_FacePanelLabel\" />"));
     facePanel.add(faceOffsetField);
     facePanel.add(faceCountField);
-    facePanel.add(faceBlockSizeField);
+
+    WSPanel faceSizePanel = new WSPanel(XMLReader.read("<WSPanel layout=\"BorderLayout\" vertical-gap=\"4\" horizontal-gap=\"4\" showBorder=\"false\" showLabel=\"false\" opaque=\"false\" code=\"PreviewPanel_MeshInvestigator_FaceSizePanelLabel\" />"));
+    faceSizePanel.add(faceBlockSizeField, BorderLayout.CENTER);
+    faceSizePanel.add(triangleStripCheckbox, BorderLayout.EAST);
+
+    facePanel.add(faceSizePanel);
 
     WSPanel vertexFacePanel = new WSPanel(XMLReader.read("<WSPanel code=\"PreviewPanel_3DModel_VertexFacePanelWrapper\" layout=\"GridLayout\" rows=\"2\" columns=\"1\" vertical-gap=\"4\" />"));
     vertexFacePanel.add(vertexPanel);
@@ -559,6 +570,11 @@ public class PreviewPanel_MeshInvestigator extends PreviewPanel_Image implements
         //showUVTexturePopup();
         return true;
       }
+      else if (code.equals("PreviewPanel_MeshInvestigator_TriangleStripCheckbox")) {
+        Settings.set("PreviewPanel_MeshInvestigator_TriangleStripCheckboxSelected", triangleStripCheckbox.isSelected());
+        regenerateMesh();
+        return true;
+      }
       else if (code.equals("PreviewPanel_MeshInvestigator_CloseStatsLogButton") || code.equals("PreviewPanel_MeshInvestigator_CloseUVButton")) {
         WSPanel overlayPanel = (WSPanel) ComponentRepository.get("PopupOverlay");
         if (overlayPanel != null) {
@@ -669,6 +685,8 @@ public class PreviewPanel_MeshInvestigator extends PreviewPanel_Image implements
         return;
       }
 
+      boolean doTriangleStrip = triangleStripCheckbox.isSelected();
+
       long arcSize = file.length();
 
       // Set up the mesh
@@ -705,52 +723,153 @@ public class PreviewPanel_MeshInvestigator extends PreviewPanel_Image implements
 
       fm.seek(faceOffset);
 
-      int numFaces3 = numFaces;
-      numFaces = numFaces / 3;
-      int numFaces6 = numFaces3 * 2;
+      if (doTriangleStrip) {
+        // read a triangle strip
 
-      faces = new int[numFaces6]; // need to store front and back faces
+        numFaces -= 2; // the first 2 points are needed to start, then every point after that is a new face
+        int numFaces3 = numFaces * 3;
+        int numFaces6 = numFaces3 * 2;
 
-      if (faceBlockSize == 2) {
-        for (int i = 0, j = 0; i < numFaces; i++, j += 6) {
-          // 2 - Point Index 1
-          // 2 - Point Index 2
-          // 2 - Point Index 3
-          int facePoint1 = (ShortConverter.unsign(fm.readShort()));
-          int facePoint2 = (ShortConverter.unsign(fm.readShort()));
-          int facePoint3 = (ShortConverter.unsign(fm.readShort()));
+        faces = new int[numFaces6]; // need to store front and back faces
 
-          // reverse face first (so the light shines properly, for this model specifically)
-          faces[j] = facePoint3;
-          faces[j + 1] = facePoint2;
-          faces[j + 2] = facePoint1;
+        if (faceBlockSize == 2) {
+          int firstPoint = ShortConverter.unsign(fm.readShort());
+          int secondPoint = ShortConverter.unsign(fm.readShort());
 
-          // forward face second
-          faces[j + 3] = facePoint1;
-          faces[j + 4] = facePoint2;
-          faces[j + 5] = facePoint3;
+          boolean swap = false; // in a triangle strip, every second triangle needs to swap points 2 and 3
+          for (int i = 0, j = 0; i < numFaces; i++, j += 6) {
+            // 2 - Point Index 1
+            // 2 - Point Index 2
+            // 2 - Point Index 3
+            int facePoint1 = firstPoint;
+            int facePoint2 = secondPoint;
+            int facePoint3 = (ShortConverter.unsign(fm.readShort()));
 
+            if (swap) {
+              // reverse face first (so the light shines properly, for this model specifically)
+              faces[j] = facePoint3;
+              faces[j + 1] = facePoint2;
+              faces[j + 2] = facePoint1;
+
+              // forward face second
+              faces[j + 3] = facePoint1;
+              faces[j + 4] = facePoint2;
+              faces[j + 5] = facePoint3;
+            }
+            else {
+              // reverse face first (so the light shines properly, for this model specifically)
+              faces[j] = facePoint2;
+              faces[j + 1] = facePoint3;
+              faces[j + 2] = facePoint1;
+
+              // forward face second
+              faces[j + 3] = facePoint1;
+              faces[j + 4] = facePoint3;
+              faces[j + 5] = facePoint2;
+            }
+
+            swap = !swap;
+
+            // remember the last 2 points, as they form the first 2 points of the next triangle
+            firstPoint = secondPoint;
+            secondPoint = facePoint3;
+          }
         }
+        else if (faceBlockSize == 4) {
+          int firstPoint = (int) IntConverter.unsign(fm.readInt());
+          int secondPoint = (int) IntConverter.unsign(fm.readInt());
+
+          boolean swap = false; // in a triangle strip, every second triangle needs to swap points 2 and 3
+          for (int i = 0, j = 0; i < numFaces; i++, j += 6) {
+            // 2 - Point Index 1
+            // 2 - Point Index 2
+            // 2 - Point Index 3
+            int facePoint1 = firstPoint;
+            int facePoint2 = secondPoint;
+            int facePoint3 = (int) IntConverter.unsign(fm.readInt());
+
+            if (swap) {
+              // reverse face first (so the light shines properly, for this model specifically)
+              faces[j] = facePoint3;
+              faces[j + 1] = facePoint2;
+              faces[j + 2] = facePoint1;
+
+              // forward face second
+              faces[j + 3] = facePoint1;
+              faces[j + 4] = facePoint2;
+              faces[j + 5] = facePoint3;
+            }
+            else {
+              // reverse face first (so the light shines properly, for this model specifically)
+              faces[j] = facePoint2;
+              faces[j + 1] = facePoint3;
+              faces[j + 2] = facePoint1;
+
+              // forward face second
+              faces[j + 3] = facePoint1;
+              faces[j + 4] = facePoint3;
+              faces[j + 5] = facePoint2;
+            }
+
+            swap = !swap;
+
+            // remember the last 2 points, as they form the first 2 points of the next triangle
+            firstPoint = secondPoint;
+            secondPoint = facePoint3;
+          }
+        }
+
       }
-      else if (faceBlockSize == 4) {
-        for (int i = 0, j = 0; i < numFaces; i++, j += 6) {
-          // 4 - Point Index 1
-          // 4 - Point Index 2
-          // 4 - Point Index 3
-          int facePoint1 = (int) (IntConverter.unsign(fm.readInt()));
-          int facePoint2 = (int) (IntConverter.unsign(fm.readInt()));
-          int facePoint3 = (int) (IntConverter.unsign(fm.readInt()));
+      else {
+        // read as individual triangles
 
-          // reverse face first (so the light shines properly, for this model specifically)
-          faces[j] = facePoint3;
-          faces[j + 1] = facePoint2;
-          faces[j + 2] = facePoint1;
+        int numFaces3 = numFaces;
+        numFaces = numFaces / 3;
+        int numFaces6 = numFaces3 * 2;
 
-          // forward face second
-          faces[j + 3] = facePoint1;
-          faces[j + 4] = facePoint2;
-          faces[j + 5] = facePoint3;
+        faces = new int[numFaces6]; // need to store front and back faces
 
+        if (faceBlockSize == 2) {
+          for (int i = 0, j = 0; i < numFaces; i++, j += 6) {
+            // 2 - Point Index 1
+            // 2 - Point Index 2
+            // 2 - Point Index 3
+            int facePoint1 = (ShortConverter.unsign(fm.readShort()));
+            int facePoint2 = (ShortConverter.unsign(fm.readShort()));
+            int facePoint3 = (ShortConverter.unsign(fm.readShort()));
+
+            // reverse face first (so the light shines properly, for this model specifically)
+            faces[j] = facePoint3;
+            faces[j + 1] = facePoint2;
+            faces[j + 2] = facePoint1;
+
+            // forward face second
+            faces[j + 3] = facePoint1;
+            faces[j + 4] = facePoint2;
+            faces[j + 5] = facePoint3;
+
+          }
+        }
+        else if (faceBlockSize == 4) {
+          for (int i = 0, j = 0; i < numFaces; i++, j += 6) {
+            // 4 - Point Index 1
+            // 4 - Point Index 2
+            // 4 - Point Index 3
+            int facePoint1 = (int) (IntConverter.unsign(fm.readInt()));
+            int facePoint2 = (int) (IntConverter.unsign(fm.readInt()));
+            int facePoint3 = (int) (IntConverter.unsign(fm.readInt()));
+
+            // reverse face first (so the light shines properly, for this model specifically)
+            faces[j] = facePoint3;
+            faces[j + 1] = facePoint2;
+            faces[j + 2] = facePoint1;
+
+            // forward face second
+            faces[j + 3] = facePoint1;
+            faces[j + 4] = facePoint2;
+            faces[j + 5] = facePoint3;
+
+          }
         }
       }
 

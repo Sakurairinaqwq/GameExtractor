@@ -24,6 +24,7 @@ import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ExporterPlugin;
 import org.watto.ge.plugin.exporter.Exporter_ZLib;
 import org.watto.io.FileManipulator;
+import org.watto.io.converter.IntConverter;
 import org.watto.task.TaskProgressManager;
 
 /**
@@ -97,12 +98,12 @@ public class Plugin_FS_3 extends ArchivePlugin {
 
       FileManipulator fm = new FileManipulator(path, false);
 
-      long arcSize = (int) fm.getLength();
+      long arcSize = fm.getLength();
 
       fm.seek(arcSize - 4);
 
       // 4 - Directory Offset
-      long dirOffset = fm.readInt();
+      long dirOffset = IntConverter.unsign(fm.readInt());
       FieldValidator.checkOffset(dirOffset, arcSize);
 
       fm.seek(dirOffset + 4);
@@ -160,7 +161,7 @@ public class Plugin_FS_3 extends ArchivePlugin {
         FieldValidator.checkLength(compLength, arcSize);
 
         // 4 - File Offset [*2048]
-        long offset = fm.readInt() * 2048;
+        long offset = IntConverter.unsign(fm.readInt()) * 2048;
         FieldValidator.checkOffset(offset, arcSize);
 
         // 4 - Decompressed File Length

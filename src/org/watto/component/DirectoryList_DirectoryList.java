@@ -76,7 +76,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public DirectoryList_DirectoryList() {
@@ -116,7 +116,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public void changeToParent() {
@@ -181,7 +181,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
       }
     }
     catch (Throwable t) {
-      // security exception or something like that, so show the program directory instead
+      // security exception or something like that, so show the program directory instead 
       changeDirectory(new File(new File("").getAbsolutePath()));
     }
 
@@ -198,7 +198,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public void constructInterface() {
@@ -207,7 +207,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -255,7 +255,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
       // it might be represented by a Special Folder (eg "This PC" or "Documents") - lets check that first
       File[] specialFolders = drives.getDrives();
       int numSpecial = specialFolders.length;
-
+      
       // get the drive name only, from the source file
       String currentPath = directory.getPath();
       if (currentPath != null) {
@@ -263,13 +263,13 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
         if (slashPos != -1) {
           currentPath = currentPath.substring(0, slashPos);
         }
-
+      
         for (int i = 0; i < numSpecial; i++) {
           File specialFolder = specialFolders[i];
           if (specialFolder instanceof ShellFolderFile) {
             if (specialFolder.getName().equals(currentPath)) {
               // found it
-
+      
               // Drill through from the special folder into the children until we find the actual folder we want
               String[] parents = null;
               try {
@@ -279,10 +279,10 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
                 parents = directory.getPath().split(File.separator + File.separator);
               }
               int parentCount = parents.length;
-
+      
               for (int p = 1; p < parentCount; p++) { // start at 1, because we've already found 0 as the specialFolder
                 String fileToMatch = parents[p];
-
+      
                 File[] children = specialFolder.listFiles();
                 int numChildren = children.length;
                 for (int c = 0; c < numChildren; c++) {
@@ -308,13 +308,13 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
                     break;
                   }
                 }
-
+      
               }
-
+      
               // If we got here, we found all (or most of) the path, so we'll load that
               changeDirectory(specialFolder);
               return;
-
+      
             }
           }
         }
@@ -334,7 +334,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @SuppressWarnings("deprecation")
@@ -352,7 +352,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -362,7 +362,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -372,7 +372,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -490,7 +490,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -570,7 +570,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @SuppressWarnings("rawtypes")
@@ -695,6 +695,9 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
         // file
         menu.add(new WSMenuItem(XMLReader.read("<WSMenuItem code=\"DirectoryList_RightClick_ReadArchive_Normal\" />")));
         menu.add(new WSMenuItem(XMLReader.read("<WSMenuItem code=\"DirectoryList_RightClick_ReadArchive_OpenWith\" />")));
+        if (GameExtractor.isFullVersion()) {
+          menu.add(new WSMenuItem(XMLReader.read("<WSMenuItem code=\"DirectoryList_RightClick_ReadArchive_Scanner\" />")));
+        }
         menu.add(new WSMenuItem(XMLReader.read("<WSMenuItem code=\"DirectoryList_RightClick_ReadArchive_Script\" />")));
         menu.add(new WSPopupMenuSeparator(XMLReader.read("<WSPopupMenuSeparator />")));
         menu.add(new WSMenuItem(XMLReader.read("<WSMenuItem code=\"DirectoryList_RightClick_ParentDirectory\" />")));
@@ -711,7 +714,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public void rebuildList(File directory) {
@@ -720,7 +723,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -736,7 +739,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -746,7 +749,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -756,7 +759,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -768,7 +771,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -780,7 +783,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -795,7 +798,7 @@ public class DirectoryList_DirectoryList extends DirectoryListPanel implements W
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @SuppressWarnings("rawtypes")

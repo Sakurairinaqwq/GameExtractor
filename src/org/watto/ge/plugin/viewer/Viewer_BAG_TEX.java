@@ -15,14 +15,15 @@
 package org.watto.ge.plugin.viewer;
 
 import java.io.File;
+
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_Image;
 import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
-import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageManipulator;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -43,7 +44,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public Viewer_BAG_TEX() {
@@ -57,7 +58,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -84,7 +85,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public String getImageType() {
@@ -93,7 +94,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -127,7 +128,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public boolean hasExtraPadding() {
@@ -283,14 +284,14 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
       }
 
       // Apply the PS2 palette striping
-      palette = ImageFormatReader.unstripePalettePS2(palette);
+      palette = ImageSwizzler.unstripePalettePS2(palette);
 
       // skip back to the first mipmap
       fm.seek(imageDataOffset);
 
       int pixelCount = imageWidth * imageHeight;
       byte[] data = fm.readBytes(pixelCount);
-      data = ImageFormatReader.unswizzlePS2(data, imageWidth, imageHeight);
+      data = ImageSwizzler.unswizzlePS2(data, imageWidth, imageHeight);
 
       int[] pixels = new int[pixelCount];
 
@@ -313,7 +314,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public void setExtraPadding(boolean extraPadding) {
@@ -322,7 +323,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public void setImageType(String imageType) {
@@ -331,7 +332,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -431,7 +432,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
         int mipmapWidth = mipmap.getWidth();
         int mipmapHeight = mipmap.getHeight();
 
-        pixels = ImageFormatReader.swizzlePS2(pixels, mipmapWidth, mipmapHeight);
+        pixels = ImageSwizzler.swizzlePS2(pixels, mipmapWidth, mipmapHeight);
 
         // X - Pixels
         int pixelCount = mipmap.getNumPixels();
@@ -444,7 +445,7 @@ public class Viewer_BAG_TEX extends ViewerPlugin {
       // X - Color Palette
       int[] palette = im.getPalette();
 
-      palette = ImageFormatReader.stripePalettePS2(palette);
+      palette = ImageSwizzler.stripePalettePS2(palette);
 
       int numColors = palette.length;
       for (int i = 0; i < numColors; i++) {

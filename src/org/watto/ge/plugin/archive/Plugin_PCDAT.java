@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,7 +15,11 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
+import org.watto.Language;
+import org.watto.Settings;
 import org.watto.datatype.Archive;
+import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -39,19 +43,20 @@ public class Plugin_PCDAT extends ArchivePlugin {
     super("PCDAT", "PCDAT");
 
     //         read write replace rename
-    setProperties(true, false, false, false);
+    setProperties(true, false, true, false);
 
     setGames("Conflict: Denied Ops",
-        "Conflict: Desert Storm");
+        "Conflict: Desert Storm",
+        "The Great Escape");
     setExtensions("dat"); // MUST BE LOWER CASE
     setPlatforms("PC");
 
     // MUST BE LOWER CASE !!!
-    //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
-    //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
-    //             );
+    setFileTypes(new FileType("loc", "Language Archive", FileType.TYPE_ARCHIVE),
+        new FileType("csv", "CSV Spreadsheet", FileType.TYPE_DOCUMENT),
+        new FileType("dat_texarc", "Texture Archive", FileType.TYPE_ARCHIVE));
 
-    //setTextPreviewExtensions("colours", "rat", "screen", "styles"); // LOWER CASE
+    setTextPreviewExtensions("ver", "csv"); // LOWER CASE
 
     setCanScanForFileTypes(true);
 
@@ -171,6 +176,93 @@ public class Plugin_PCDAT extends ArchivePlugin {
   }
 
   /**
+   **********************************************************************************************
+   * Writes an [archive] File with the contents of the Resources. The archive is written using
+   * data from the initial archive - it isn't written from scratch.
+   **********************************************************************************************
+   **/
+  @Override
+  public void replace(Resource[] resources, File path) {
+    try {
+
+      FileManipulator fm = new FileManipulator(path, true);
+      FileManipulator src = new FileManipulator(new File(Settings.getString("CurrentArchive")), false);
+
+      int numFiles = resources.length;
+      TaskProgressManager.setMaximum(numFiles);
+
+      // Get the first offset
+      src.skip(4);
+      long firstOffset = src.readInt();
+      src.relativeSeek(0);
+
+      boolean padding = (firstOffset == 49152); // 49152 = padded to 2048 bytes, 32768 = no padding
+
+      // Calculations
+      TaskProgressManager.setMessage(Language.get("Progress_PerformingCalculations"));
+
+      // Write Header Data
+
+      // Write Directory
+      TaskProgressManager.setMessage(Language.get("Progress_WritingDirectory"));
+      long offset = firstOffset;
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+        long length = resource.getDecompressedLength();
+
+        // 4 - Hash
+        fm.writeBytes(src.readBytes(4));
+
+        // 4 - File Offset
+        fm.writeInt(offset);
+        src.skip(4);
+
+        // 4 - File Length
+        fm.writeInt(length);
+        src.skip(4);
+
+        offset += length;
+
+        if (padding) {
+          offset += calculatePadding(offset, 2048);
+        }
+      }
+
+      // padding to the first file offset
+      int paddingLength = (int) (firstOffset - fm.getOffset());
+      for (int p = 0; p < paddingLength; p++) {
+        fm.writeByte(0);
+      }
+
+      // Write Files
+      TaskProgressManager.setMessage(Language.get("Progress_WritingFiles"));
+      for (int i = 0; i < resources.length; i++) {
+        Resource resource = resources[i];
+        long length = resource.getDecompressedLength();
+
+        write(resource, fm);
+
+        if (padding) {
+          paddingLength = calculatePadding(length, 2048);
+
+          for (int p = 0; p < paddingLength; p++) {
+            fm.writeByte(0);
+          }
+        }
+
+        TaskProgressManager.setValue(i);
+      }
+
+      src.close();
+      fm.close();
+
+    }
+    catch (Throwable t) {
+      logError(t);
+    }
+  }
+
+  /**
   **********************************************************************************************
   If an archive doesn't have filenames stored in it, the scanner can come here to try to work out
   what kind of file a Resource is. This method allows the plugin to provide additional plugin-specific
@@ -187,14 +279,46 @@ public class Plugin_PCDAT extends ArchivePlugin {
     else if (headerInt1 == 1718054249) {
       return "imgf";
     }
+    else if (headerInt1 == 2) {
+      return "mesh";
+    }
     else if (headerInt1 == 1178750284) {
       return "lmbf";
     }
     else if (headerInt1 == 1196118081) {
       return "apkg";
     }
-    else if (headerInt1 == 1380275744) {
+    else if (headerInt1 == 1380275744 || headerInt1 == 1397900630) {
       return "ver";
+    }
+    else if (headerInt1 == 0 && (headerInt2 > 0 && headerInt2 < 50) && (headerInt3 > 0 && headerInt3 < 50)) {
+      return "loc"; // language archive
+    }
+    else if (headerInt1 == 1 && headerInt2 == 80) {
+      return "facetalk";
+    }
+    else if (headerInt3 == 4 || headerInt3 == 8) {
+      return "dat_texarc"; // potentially a texture archive (PS2)
+    }
+    else {
+      // if the first 12 bytes are all ascii, it might be a text file
+      boolean ascii = true;
+      for (int b = 0; b < 12; b++) {
+        byte currentByte = headerBytes[b];
+        if (currentByte >= 32 && currentByte <= 126) {
+          // ascii
+        }
+        else if (currentByte == 9 || currentByte == 10 || currentByte == 13) {
+          // ascii (tab, new line)
+        }
+        else {
+          ascii = false; // found a non-ascii character
+          break;
+        }
+      }
+      if (ascii) {
+        return "csv";
+      }
     }
 
     return null;

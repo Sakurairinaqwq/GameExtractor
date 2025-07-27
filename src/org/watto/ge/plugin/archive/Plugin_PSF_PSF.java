@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -16,6 +16,7 @@ package org.watto.ge.plugin.archive;
 
 import java.io.File;
 import java.util.Arrays;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -41,9 +42,10 @@ public class Plugin_PSF_PSF extends ArchivePlugin {
     //         read write replace rename
     setProperties(true, false, false, false);
 
-    setGames("Conflict: Desert Storm");
-    setExtensions("psf"); // MUST BE LOWER CASE
-    setPlatforms("PC");
+    setGames("Conflict: Desert Storm",
+        "The Great Escape");
+    setExtensions("psf", "swd"); // MUST BE LOWER CASE
+    setPlatforms("PC", "PS2", "XBox");
 
     // MUST BE LOWER CASE !!!
     //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
@@ -52,7 +54,7 @@ public class Plugin_PSF_PSF extends ArchivePlugin {
 
     //setTextPreviewExtensions("colours", "rat", "screen", "styles"); // LOWER CASE
 
-    //setCanScanForFileTypes(true);
+    setCanScanForFileTypes(true);
 
   }
 
@@ -175,11 +177,15 @@ public class Plugin_PSF_PSF extends ArchivePlugin {
   @Override
   public String guessFileExtension(Resource resource, byte[] headerBytes, int headerInt1, int headerInt2, int headerInt3, short headerShort1, short headerShort2, short headerShort3, short headerShort4, short headerShort5, short headerShort6) {
 
-    /*
-    if (headerInt1 == 2037149520) {
-      return "js";
+    if (headerInt1 == -2142874800) {
+      return "psf_audio";
     }
-    */
+    else if (headerInt1 == -1069132976) {
+      return "psf_audio_ps2";
+    }
+    else if (headerInt1 == 1615221584) {
+      return "dir";
+    }
 
     return null;
   }

@@ -21,6 +21,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -212,13 +213,13 @@ public class Viewer_RES_0TSR_3_TEX_IGM extends ViewerPlugin {
         */
 
         imageResource = ImageFormatReader.read4BitPaletted(fm, width, height, palette);
-        imageResource.setPixels(ImageFormatReader.unswizzlePS2(imageResource.getImagePixels(), width, height));
+        imageResource.setPixels(ImageSwizzler.unswizzlePS2(imageResource.getImagePixels(), width, height));
 
       }
       else if (imageFormat == 1) {
         // 8-bit Paletted
         imageResource = ImageFormatReader.read8BitPaletted(fm, width, height, palette);
-        imageResource.setPixels(ImageFormatReader.unswizzlePS2(imageResource.getImagePixels(), width, height));
+        imageResource.setPixels(ImageSwizzler.unswizzlePS2(imageResource.getImagePixels(), width, height));
       }
       else if (imageFormat == 2) {
         // RGB555

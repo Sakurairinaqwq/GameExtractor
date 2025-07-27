@@ -20,6 +20,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -256,7 +257,7 @@ public class Viewer_PAC_2_TEX extends ViewerPlugin {
       else {
         // 8-bit
         palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-        palette = ImageFormatReader.stripePalettePS2(palette); // Palette is PS2-striped
+        palette = ImageSwizzler.stripePalettePS2(palette); // Palette is PS2-striped
       }
 
       // now read the pixels for each image
@@ -657,7 +658,7 @@ public class Viewer_PAC_2_TEX extends ViewerPlugin {
       else {
         // 8-bit
         palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-        palette = ImageFormatReader.stripePalettePS2(palette); // Palette is PS2-striped
+        palette = ImageSwizzler.stripePalettePS2(palette); // Palette is PS2-striped
       }
 
       // now build the image

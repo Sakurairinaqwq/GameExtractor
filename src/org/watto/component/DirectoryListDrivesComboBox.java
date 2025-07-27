@@ -140,7 +140,29 @@ public class DirectoryListDrivesComboBox extends WSComboBox implements WSFocusab
     int selectPos = insertPos;
 
     // don't add the item if it is a drive, as the drive letters already exist in the list normally.
-    if (!(directory instanceof ShellFolder)) {
+    try {
+      if (!(directory instanceof ShellFolder)) {
+        if (directory.getParentFile() != null) {
+          insertItemAt(directory, insertPos);
+        }
+        else {
+          selectPos--;
+        }
+
+        directory = directory.getParentFile();
+        while (directory != null) {
+          File parentDirectory = directory.getParentFile();
+          if (parentDirectory != null) {
+            insertItemAt(directory, insertPos);
+            selectPos++;
+          }
+          directory = parentDirectory;
+        }
+      }
+
+    }
+    catch (Throwable t) {
+      // leave it, this is just for newer java versions where ShellFolder is removed
       if (directory.getParentFile() != null) {
         insertItemAt(directory, insertPos);
       }

@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2022 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,10 +15,11 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
+import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
-import org.watto.ge.plugin.ExporterPlugin;
 import org.watto.ge.plugin.exporter.Exporter_ZLib;
 import org.watto.io.FileManipulator;
 import org.watto.task.TaskProgressManager;
@@ -42,14 +43,14 @@ public class Plugin_DAT_PAK extends ArchivePlugin {
     //         read write replace rename
     setProperties(true, false, false, false);
 
-    setGames("Scooby-Doo! and the Spooky Swamp");
+    setGames("Scooby-Doo! and the Spooky Swamp",
+        "Scooby-Doo! First Frights");
     setExtensions("dat"); // MUST BE LOWER CASE
-    setPlatforms("PS2");
+    setPlatforms("PS2", "PC");
 
     // MUST BE LOWER CASE !!!
-    //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
-    //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
-    //             );
+    setFileTypes(new FileType("script", "Script", FileType.TYPE_DOCUMENT),
+        new FileType("hnk", "Hunk Archive", FileType.TYPE_ARCHIVE));
 
     setTextPreviewExtensions("script"); // LOWER CASE
 
@@ -107,7 +108,7 @@ public class Plugin_DAT_PAK extends ArchivePlugin {
 
       addFileTypes();
 
-      ExporterPlugin exporter = Exporter_ZLib.getInstance();
+      Exporter_ZLib exporter = Exporter_ZLib.getInstance();
 
       // RESETTING GLOBAL VARIABLES
 
@@ -175,6 +176,106 @@ public class Plugin_DAT_PAK extends ArchivePlugin {
           resource.setOffset(offset);
           resource.setExporter(exporter);
 
+          // We no longer do this here, as the filenames and types aren't accurate.
+          // Just leave it as an Object, and process it by the Plugin_OBJECT instead.
+          /*
+          
+          // Extract the first little bit of the file, to try and work out the filename and the directory names
+          int extractLength = (int) length;
+          if (extractLength > 1024) {
+            extractLength = 1024;
+          }
+          
+          int extractDecompLength = (int) decompLength;
+          if (extractDecompLength > 1024) {
+            extractDecompLength = 1024;
+          }
+          
+          byte[] compBytes = fm.readBytes(extractLength);
+          FileManipulator compFM = new FileManipulator(new ByteBuffer(compBytes));
+          
+          byte[] decompBytes = new byte[extractDecompLength];
+          exporter.open(compFM, extractLength, extractDecompLength);
+          
+          int decompWritePos = 0;
+          for (int b = 0; b < extractDecompLength; b++) {
+            if (exporter.available()) { // make sure we read the next bit of data, if required
+              decompBytes[decompWritePos++] = (byte) exporter.read();
+            }
+          }
+          
+          // open the decompressed data for processing
+          compFM.close();
+          compFM = new FileManipulator(new ByteBuffer(decompBytes));
+          
+          // check the header
+          String filename = "";
+          short shortHeader = compFM.readShort();
+          if (shortHeader == 592) {
+            // Object
+          
+            try {
+              // 4 - Unknown (592) // we already read 2 bytes above
+              // 2 - Unknown (112)
+              // 2 - Unknown (4)
+              // 4 - Unknown
+              // 2 - Unknown (1)
+              // 2 - Unknown (2/4)
+              // 4 - Flags?
+              compFM.skip(18);
+          
+              // 4 - Number of Directory Names
+              int numDirNames = compFM.readInt();
+              FieldValidator.checkRange(numDirNames, 1, 10); // guess
+          
+              for (int n = 0; n < numDirNames; n++) {
+                // 64 - Directory Name (null terminated, filled with nulls)
+                String dirName = compFM.readNullString(64);
+                FieldValidator.checkFilename(dirName);
+                filename += dirName + "\\";
+          
+                // 4 - Unknown
+                // 4 - Unknown
+                compFM.skip(8);
+              }
+          
+              // X - null Padding to offset 600
+              compFM.seek(600);
+          
+              // 4 - Unknown (36)
+              // 2 - Unknown (113)
+              // 2 - Unknown (4)
+              // 2 - Unknown (1)
+              // 2 - Unknown (4)
+              // 2 - Number of Names (2)
+              // for each name
+              //   2 - Name Length (including null terminator)
+              compFM.skip(18);
+          
+              // The first name is the object type
+              String type = compFM.readNullString();
+              // The second name is the filename
+              filename += compFM.readNullString() + "." + type;
+          
+            }
+            catch (Throwable t) {
+              // don't worry, just set the filename
+              filename = resource.getName() + ".Object"; // either "graphics" or "sound", for example
+            }
+          
+          }
+          else if (shortHeader == 24941) {
+            // Script
+            filename = resource.getName() + ".Script";
+          }
+          else {
+            filename = resource.getName() + "." + shortHeader;
+          }
+          
+          resource.setName(filename);
+          resource.setOriginalName(filename);
+          */
+
         }
         else if (header.equals("ALPO")) {
           // do nothing - only 1 of these files, not sure what it is
@@ -215,7 +316,7 @@ public class Plugin_DAT_PAK extends ArchivePlugin {
   public String guessFileExtension(Resource resource, byte[] headerBytes, int headerInt1, int headerInt2, int headerInt3, short headerShort1, short headerShort2, short headerShort3, short headerShort4, short headerShort5, short headerShort6) {
 
     if (headerShort1 == 592) {
-      return "Object"; // either "graphics" or "sound", for example
+      return "hnk"; // either "graphics" or "sound", for example
     }
     else if (headerShort1 == 24941) {
       return "Script";

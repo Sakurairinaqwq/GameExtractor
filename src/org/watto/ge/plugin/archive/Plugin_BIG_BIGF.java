@@ -255,7 +255,7 @@ public class Plugin_BIG_BIGF extends ArchivePlugin {
   @Override
   public ViewerPlugin previewHint(Resource resource) {
     String extension = resource.getExtension();
-    if (extension.equalsIgnoreCase("shd") || extension.equalsIgnoreCase("loc") || extension.equalsIgnoreCase("skn") || extension.equalsIgnoreCase("irr")) {
+    if (extension.equalsIgnoreCase("loc") || extension.equalsIgnoreCase("skn") || extension.equalsIgnoreCase("irr")) {
       return (ViewerPlugin) WSPluginManager.getPlugin("Viewer", "TXT");
     }
     else if (extension.equalsIgnoreCase("cdata")) { // Red Alert 3 Audio Files

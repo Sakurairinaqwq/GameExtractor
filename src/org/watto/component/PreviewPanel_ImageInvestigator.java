@@ -30,6 +30,7 @@ import org.watto.event.WSClickableInterface;
 import org.watto.event.WSEnterableInterface;
 import org.watto.event.WSSelectableInterface;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.io.FileManipulator;
 import org.watto.io.buffer.ByteBuffer;
 import org.watto.xml.XMLReader;
@@ -55,13 +56,17 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
 
   WSComboBox paletteFormatChooser;
 
+  WSComboBox swizzleFormatChooser;
+
   WSButton regenerateImageButton;
 
+  /*
   WSCheckBox swizzleCheckbox;
-
+  
   WSCheckBox swizzlePS2Checkbox;
-
+  
   WSCheckBox swizzleSwitchCheckbox;
+  */
 
   WSCheckBox verticalFlipCheckbox;
 
@@ -149,7 +154,7 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
     widthField.setText(widthValue);
     heightField.setText(heightValue);
 
-    WSPanel offsetWidthHeightPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"1\" columns=\"3\" showBorder=\"true\" showLabel=\"true\" code=\"PreviewPanel_ImageInvestigator_OffsetWidthHeightPanelLabel\" />"));
+    WSPanel offsetWidthHeightPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"1\" columns=\"3\" showBorder=\"true\" showLabel=\"false\" code=\"PreviewPanel_ImageInvestigator_OffsetWidthHeightPanelLabel\" />"));
     offsetWidthHeightPanel.add(offsetField);
     offsetWidthHeightPanel.add(widthField);
     offsetWidthHeightPanel.add(heightField);
@@ -175,7 +180,7 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
     WSPanel paletteFormatChooserPanel = new WSPanel(XMLReader.read("<WSPanel showLabel=\"true\" showBorder=\"true\" code=\"PreviewPanel_ImageInvestigator_PaletteFormatChooserLabel\" opaque=\"false\" padding=\"0\" border-width=\"0\" />"));
     paletteFormatChooserPanel.add(paletteFormatChooser, BorderLayout.CENTER);
 
-    WSPanel palettePanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"1\" columns=\"3\" showBorder=\"true\" showLabel=\"true\" code=\"PreviewPanel_ImageInvestigator_PalettePanelLabel\" />"));
+    WSPanel palettePanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"1\" columns=\"3\" showBorder=\"true\" showLabel=\"false\" code=\"PreviewPanel_ImageInvestigator_PalettePanelLabel\" />"));
     palettePanel.add(paletteOffsetField);
     palettePanel.add(paletteNumColorsField);
     palettePanel.add(paletteFormatChooserPanel);
@@ -187,12 +192,19 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
     formatChooserPanel.add(formatChooser, BorderLayout.CENTER);
     formatChooserPanel.add(regenerateImageButton, BorderLayout.EAST);
 
+    swizzleFormatChooser = new WSComboBox(XMLReader.read("<WSComboBox code=\"PreviewPanel_ImageInvestigator_SwizzleFormatChooser\" />"));
+
+    WSPanel swizzleFormatChooserPanel = new WSPanel(XMLReader.read("<WSPanel showLabel=\"true\" showBorder=\"true\" code=\"PreviewPanel_ImageInvestigator_SwizzleFormatChooserLabel\" opaque=\"false\" padding=\"0\" border-width=\"0\" />"));
+    swizzleFormatChooserPanel.add(swizzleFormatChooser, BorderLayout.CENTER);
+
+    /*
     swizzleCheckbox = new WSCheckBox(XMLReader.read("<WSCheckBox code=\"PreviewPanel_ImageInvestigator_SwizzleCheckbox\" horizontal-alignment=\"left\" opaque=\"false\" />"));
     swizzleCheckbox.setSelected(Settings.getBoolean("PreviewPanel_ImageInvestigator_SwizzleCheckboxSelected"));
     swizzlePS2Checkbox = new WSCheckBox(XMLReader.read("<WSCheckBox code=\"PreviewPanel_ImageInvestigator_SwizzlePS2Checkbox\" horizontal-alignment=\"left\" opaque=\"false\" />"));
     swizzlePS2Checkbox.setSelected(Settings.getBoolean("PreviewPanel_ImageInvestigator_SwizzlePS2CheckboxSelected"));
     swizzleSwitchCheckbox = new WSCheckBox(XMLReader.read("<WSCheckBox code=\"PreviewPanel_ImageInvestigator_SwizzleSwitchCheckbox\" horizontal-alignment=\"left\" opaque=\"false\" />"));
     swizzleSwitchCheckbox.setSelected(Settings.getBoolean("PreviewPanel_ImageInvestigator_SwizzleSwitchCheckboxSelected"));
+    */
 
     verticalFlipCheckbox = new WSCheckBox(XMLReader.read("<WSCheckBox code=\"PreviewPanel_ImageInvestigator_VerticalFlipCheckbox\" horizontal-alignment=\"left\" opaque=\"false\" />"));
     verticalFlipCheckbox.setSelected(Settings.getBoolean("PreviewPanel_ImageInvestigator_VerticalFlipCheckboxSelected"));
@@ -202,10 +214,13 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
     removeAlphaCheckbox = new WSCheckBox(XMLReader.read("<WSCheckBox code=\"PreviewPanel_ImageInvestigator_RemoveAlphaCheckbox\" horizontal-alignment=\"left\" opaque=\"false\" />"));
     removeAlphaCheckbox.setSelected(Settings.getBoolean("PreviewPanel_ImageInvestigator_RemoveAlphaCheckboxSelected"));
 
+    /*
     WSPanel settingsCheckboxPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"3\" columns=\"2\" showBorder=\"true\" showLabel=\"true\" code=\"PreviewPanel_ImageInvestigator_SettingsPanelLabel\" />"));
     settingsCheckboxPanel.add(swizzleCheckbox);
     settingsCheckboxPanel.add(swizzlePS2Checkbox);
     settingsCheckboxPanel.add(swizzleSwitchCheckbox);
+    */
+    WSPanel settingsCheckboxPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"1\" columns=\"3\" showBorder=\"true\" showLabel=\"true\" code=\"PreviewPanel_ImageInvestigator_SettingsPanelLabel\" />"));
     settingsCheckboxPanel.add(verticalFlipCheckbox);
     settingsCheckboxPanel.add(stripePalettePS2Checkbox);
     settingsCheckboxPanel.add(removeAlphaCheckbox);
@@ -215,12 +230,16 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
     bigEndianRadioButton = new WSRadioButton(XMLReader.read("<WSRadioButton code=\"PreviewPanel_ImageInvestigator_BigEndianRadioButton\" group=\"PreviewPanel_ImageInvestigator_EndianGroup\" opaque=\"false\" />"));
     bigEndianRadioButton.setSelected(Settings.getBoolean("PreviewPanel_ImageInvestigator_BigEndianRadioButtonSelected"));
 
-    WSPanel endianRadioButtonPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"2\" columns=\"1\" code=\"PreviewPanel_ImageInvestigator_EndianGroup\" showLabel=\"true\" showBorder=\"true\" />"));
+    WSPanel endianRadioButtonPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"GridLayout\" rows=\"1\" columns=\"2\" code=\"PreviewPanel_ImageInvestigator_EndianGroup\" showLabel=\"true\" showBorder=\"true\" />"));
     endianRadioButtonPanel.add(littleEndianRadioButton);
     endianRadioButtonPanel.add(bigEndianRadioButton);
 
+    WSPanel endianAndSwizzlePanel = new WSPanel(XMLReader.read("<WSPanel layout=\"BorderLayout\" code=\"PreviewPanel_ImageInvestigator_EndianAndSwizzlePanel\"  vertical-gap=\"4\" horizontal-gap=\"4\" />"));
+    endianAndSwizzlePanel.add(endianRadioButtonPanel, BorderLayout.WEST);
+    endianAndSwizzlePanel.add(swizzleFormatChooserPanel, BorderLayout.CENTER);
+
     WSPanel settingsEndianPanel = new WSPanel(XMLReader.read("<WSPanel code=\"PreviewPanel_ImageInvestigator_SettingsEndianPanelWrapper\" vertical-gap=\"4\" horizontal-gap=\"4\" />"));
-    settingsEndianPanel.add(endianRadioButtonPanel, BorderLayout.WEST);
+    settingsEndianPanel.add(endianAndSwizzlePanel, BorderLayout.NORTH);
     settingsEndianPanel.add(settingsCheckboxPanel, BorderLayout.CENTER);
 
     WSPanel topPanel = new WSPanel(XMLReader.read("<WSPanel code=\"PreviewPanel_ImageInvestigator_TopPanelWrapper\" vertical-gap=\"4\" horizontal-gap=\"4\" />"));
@@ -232,7 +251,7 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
     bottomPanel.add(settingsEndianPanel, BorderLayout.SOUTH);
 
     WSPanel bottomPanelWithFormats = new WSPanel(XMLReader.read("<WSPanel code=\"PreviewPanel_ImageInvestigator_BottomPanelWithFormatsWrapper\" vertical-gap=\"4\" />"));
-    bottomPanelWithFormats.add(bottomPanel, BorderLayout.NORTH);
+    bottomPanelWithFormats.add(bottomPanel, BorderLayout.SOUTH);
     bottomPanelWithFormats.add(formatChooserPanel, BorderLayout.CENTER);
 
     add(bottomPanelWithFormats, BorderLayout.SOUTH);
@@ -246,6 +265,11 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
 
     String chosenPaletteFormat = Settings.getString("PreviewPanel_ImageInvestigator_PaletteFormat");
     paletteFormatChooser.setSelectedItem(chosenPaletteFormat);
+
+    loadSwizzleFormats();
+
+    String chosenSwizzleFormat = Settings.getString("PreviewPanel_ImageInvestigator_SwizzleFormat");
+    swizzleFormatChooser.setSelectedItem(chosenSwizzleFormat);
 
   }
 
@@ -271,7 +295,10 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
         //"DXT5Swizzled",
         "BC4",
         "BC5",
+        "BC6H",
+        "BC6H_Signed",
         "BC7",
+        "ETC1_RGB8",
         "ETC2_RGBA8",
         "CMPR",
         "ARGB",
@@ -356,6 +383,30 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
 
   /**
   **********************************************************************************************
+  
+  **********************************************************************************************
+  **/
+  @SuppressWarnings({ "unchecked", "rawtypes" })
+  public void loadSwizzleFormats() {
+    String[] swizzleFormats = new String[] {
+        "None",
+        "Swizzle",
+        "PS2 4bit",
+        "PS2 4bit Suba",
+        "PS2 8bit",
+        "PS2 8bit Suba",
+        "PS2 16bit Suba",
+        "PSP 4bit",
+        "PSP 8bit",
+        "PSP 32bit",
+        "Switch"
+    };
+
+    swizzleFormatChooser.setModel(new DefaultComboBoxModel(swizzleFormats));
+  }
+
+  /**
+  **********************************************************************************************
   Toggle the background color behind the image when the user clicks on it
   **********************************************************************************************
   **/
@@ -379,6 +430,7 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
         regenerateImage();
         return true;
       }
+      /*
       else if (code.equals("PreviewPanel_ImageInvestigator_SwizzleCheckbox")) {
         Settings.set("PreviewPanel_ImageInvestigator_SwizzleCheckboxSelected", swizzleCheckbox.isSelected());
         regenerateImage();
@@ -394,6 +446,7 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
         regenerateImage();
         return true;
       }
+      */
       else if (code.equals("PreviewPanel_ImageInvestigator_VerticalFlipCheckbox")) {
         Settings.set("PreviewPanel_ImageInvestigator_VerticalFlipCheckboxSelected", verticalFlipCheckbox.isSelected());
         regenerateImage();
@@ -498,6 +551,9 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
       else if (code.equals("PreviewPanel_ImageInvestigator_PaletteFormatChooser")) {
         regenerateImage();
       }
+      else if (code.equals("PreviewPanel_ImageInvestigator_SwizzleFormatChooser")) {
+        regenerateImage();
+      }
     }
 
     // catch-all to stop the combobox being caught by the SidePanel_Preview
@@ -548,9 +604,11 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
 
     FileManipulator fm = new FileManipulator(file, false);
 
+    /*
     boolean doSwizzle = swizzleCheckbox.isSelected();
     boolean doSwizzlePS2 = swizzlePS2Checkbox.isSelected();
     boolean doSwizzleSwitch = swizzleSwitchCheckbox.isSelected();
+    */
     boolean doVerticalFlip = verticalFlipCheckbox.isSelected();
     boolean doStripePalettePS2 = stripePalettePS2Checkbox.isSelected();
     boolean doRemoveAlpha = removeAlphaCheckbox.isSelected();
@@ -561,6 +619,9 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
 
     String paletteFormat = (String) paletteFormatChooser.getSelectedItem();
     Settings.set("PreviewPanel_ImageInvestigator_PaletteFormat", paletteFormat);
+
+    String swizzleFormat = (String) swizzleFormatChooser.getSelectedItem();
+    Settings.set("PreviewPanel_ImageInvestigator_SwizzleFormat", swizzleFormat);
 
     //
     // READ THE COLOR PALETTE
@@ -658,7 +719,7 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
       }
 
       if (doStripePalettePS2) {
-        palette = ImageFormatReader.stripePalettePS2(palette);
+        palette = ImageSwizzler.stripePalettePS2(palette);
       }
     }
 
@@ -667,16 +728,57 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
     //
     fm.seek(offset);
 
-    if (doSwizzleSwitch) {
-      // Unswizzle the image data first
+    // Apply Swizzling (Pre-Image - ie on the byte data)
+    if (swizzleFormat.equals("Switch")) {
       int dataLength = imageWidth * imageHeight * 4;// max length, guess, caters for most image types
       byte[] rawBytes = fm.readBytes(dataLength);
-      byte[] bytes = ImageFormatReader.unswizzleSwitch(rawBytes, imageWidth, imageHeight);
+      byte[] bytes = ImageSwizzler.unswizzleSwitch(rawBytes, imageWidth, imageHeight);
+
+      fm.close();
+      fm = new FileManipulator(new ByteBuffer(bytes));
+    }
+    else if (swizzleFormat.equals("PS2 4bit")) {
+      int dataLength = imageWidth * imageHeight / 2; // 4-bits can store 2 pixels on each byte
+      byte[] rawBytes = fm.readBytes(dataLength);
+      byte[] bytes = ImageSwizzler.unswizzlePS24Bit(rawBytes, imageWidth, imageHeight);
+
+      fm.close();
+      fm = new FileManipulator(new ByteBuffer(bytes));
+    }
+    else if (swizzleFormat.equals("PS2 4bit Suba")) {
+      int dataLength = imageWidth * imageHeight / 2; // 4-bits can store 2 pixels on each byte
+      byte[] rawBytes = fm.readBytes(dataLength);
+      byte[] bytes = ImageSwizzler.unswizzlePS24BitSuba(rawBytes, imageWidth, imageHeight);
+
+      fm.close();
+      fm = new FileManipulator(new ByteBuffer(bytes));
+    }
+    else if (swizzleFormat.equals("PSP 4bit")) {
+      int dataLength = imageWidth * imageHeight / 2;
+      byte[] rawBytes = fm.readBytes(dataLength);
+      byte[] bytes = ImageSwizzler.unswizzlePSP4Bit(rawBytes, imageWidth, imageHeight);
+
+      fm.close();
+      fm = new FileManipulator(new ByteBuffer(bytes));
+    }
+    else if (swizzleFormat.equals("PSP 8bit")) {
+      int dataLength = imageWidth * imageHeight * 4;
+      byte[] rawBytes = fm.readBytes(dataLength);
+      byte[] bytes = ImageSwizzler.unswizzlePSP8Bit(rawBytes, imageWidth, imageHeight);
+
+      fm.close();
+      fm = new FileManipulator(new ByteBuffer(bytes));
+    }
+    else if (swizzleFormat.equals("PSP 32bit")) {
+      int dataLength = imageWidth * imageHeight * 4;
+      byte[] rawBytes = fm.readBytes(dataLength);
+      byte[] bytes = ImageSwizzler.unswizzlePSP32Bit(rawBytes, imageWidth, imageHeight);
 
       fm.close();
       fm = new FileManipulator(new ByteBuffer(bytes));
     }
 
+    // Now read the image
     try {
       imageResource = null;
 
@@ -739,8 +841,17 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
       else if (format.equals("BC5")) {
         imageResource = ImageFormatReader.readBC5(fm, imageWidth, imageHeight);
       }
+      else if (format.equals("BC6H")) {
+        imageResource = ImageFormatReader.readBC6H(fm, imageWidth, imageHeight);
+      }
+      else if (format.equals("BC6H_Signed")) {
+        imageResource = ImageFormatReader.readBC6H_Signed(fm, imageWidth, imageHeight);
+      }
       else if (format.equals("BC7")) {
         imageResource = ImageFormatReader.readBC7(fm, imageWidth, imageHeight);
+      }
+      else if (format.equals("ETC1_RGB8")) {
+        imageResource = ImageFormatReader.readETC1_RGB8(fm, imageWidth, imageHeight);
       }
       else if (format.equals("ETC2_RGBA8")) {
         imageResource = ImageFormatReader.readETC2_RGBA8(fm, imageWidth, imageHeight);
@@ -903,13 +1014,33 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
         return;
       }
 
+      // Apply Swizzling (Post Image)
+      if (swizzleFormat.equals("Swizzle")) {
+        imageResource.setPixels(ImageSwizzler.unswizzle(imageResource.getPixels(), imageWidth, imageHeight, 1));
+      }
+      /*
+      // These are moved to pre-image swizzling
+      else if (swizzleFormat.equals("PS2 4bit")) {
+        imageResource.setPixels(ImageSwizzler.unswizzlePS24Bit(imageResource.getPixels(), imageWidth, imageHeight));
+      }
+      else if (swizzleFormat.equals("PS2 4bit Suba")) {
+        imageResource.setPixels(ImageSwizzler.unswizzlePS24BitSuba(imageResource.getPixels(), imageWidth, imageHeight));
+      }
+      else if (swizzleFormat.equals("PSP")) {
+        imageResource.setPixels(ImageSwizzler.unswizzlePSP(imageResource.getPixels(), imageWidth, imageHeight));
+      }
+      */
+      else if (swizzleFormat.equals("PS2 8bit")) {
+        imageResource.setPixels(ImageSwizzler.unswizzlePS2(imageResource.getPixels(), imageWidth, imageHeight));
+      }
+      else if (swizzleFormat.equals("PS2 8bit Suba")) {
+        imageResource.setPixels(ImageSwizzler.unswizzlePS28BitSuba(imageResource.getPixels(), imageWidth, imageHeight));
+      }
+      else if (swizzleFormat.equals("PS2 16bit Suba")) {
+        imageResource.setPixels(ImageSwizzler.unswizzlePS216BitSuba(imageResource.getPixels(), imageWidth, imageHeight));
+      }
+
       // Apply checkboxes
-      if (doSwizzle) {
-        imageResource.setPixels(ImageFormatReader.unswizzle(imageResource.getPixels(), imageWidth, imageHeight, 1));
-      }
-      if (doSwizzlePS2) {
-        imageResource.setPixels(ImageFormatReader.unswizzlePS2(imageResource.getPixels(), imageWidth, imageHeight));
-      }
       if (doVerticalFlip) {
         imageResource = ImageFormatReader.flipVertically(imageResource);
       }

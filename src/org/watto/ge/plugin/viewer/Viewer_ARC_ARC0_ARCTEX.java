@@ -21,6 +21,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -180,7 +181,7 @@ public class Viewer_ARC_ARC0_ARCTEX extends ViewerPlugin {
       fm.skip(12);
 
       int[] palette = ImageFormatReader.readPaletteRGBA(fm, numColors);
-      palette = ImageFormatReader.unstripePalettePS2(palette); // PS2 Striped Palette
+      palette = ImageSwizzler.unstripePalettePS2(palette); // PS2 Striped Palette
 
       // 4 - Unknown (3)
       // 4 - Unknown
@@ -248,7 +249,7 @@ public class Viewer_ARC_ARC0_ARCTEX extends ViewerPlugin {
       }
 
       if (imageResource != null) {
-        imageResource.setPixels(ImageFormatReader.unswizzlePS2(imageResource.getPixels(), width, height)); // PS2 swizzled images
+        imageResource.setPixels(ImageSwizzler.unswizzlePS2(imageResource.getPixels(), width, height)); // PS2 swizzled images
         imageResource = ImageFormatReader.doubleAlpha(imageResource);
       }
 

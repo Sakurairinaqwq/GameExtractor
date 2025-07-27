@@ -21,6 +21,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -208,7 +209,7 @@ public class Viewer_XBR_DXT extends ViewerPlugin {
       }
       else if (imageFormat == 55 | imageFormat == 56) { // paletted and swizzled
         imageResource = ImageFormatReader.read8BitPaletted(fm, width, height, palette);
-        imageResource.setPixels(ImageFormatReader.unswizzle(imageResource.getPixels(), width, height, 1));
+        imageResource.setPixels(ImageSwizzler.unswizzle(imageResource.getPixels(), width, height, 1));
       }
       else {
         ErrorLogger.log("[Viewer_XBR_DXT] Unknown Image Format: " + imageFormat);

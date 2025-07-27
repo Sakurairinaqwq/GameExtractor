@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -16,14 +16,17 @@ package org.watto.plaf;
 
 import java.awt.Component;
 import java.io.File;
+
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileSystemView;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
+
 import org.watto.Settings;
 import org.watto.ge.helper.ShellFolderFile;
+
 import sun.awt.shell.ShellFolder;
 
 public class DirectoryListDrivesComboBoxCellRenderer extends BasicComboBoxRenderer {
@@ -93,30 +96,50 @@ public class DirectoryListDrivesComboBoxCellRenderer extends BasicComboBoxRender
       }
       else {
 
-        if (file instanceof ShellFolderFile) {
-          if (((ShellFolderFile) file).getParentFile() == null) {
+        try {
+
+          if (file instanceof ShellFolderFile) {
+            if (((ShellFolderFile) file).getParentFile() == null) {
+              rend.setIcon(driveIcon);
+            }
+            else {
+              rend.setIcon(dirIcon);
+            }
+          }
+          else if (file instanceof ShellFolder) {
+            ShellFolder shellFolder = (ShellFolder) file;
+            rend.setText(shellFolder.getDisplayName());
             rend.setIcon(driveIcon);
           }
           else {
             rend.setIcon(dirIcon);
           }
+
         }
-        else if (file instanceof ShellFolder) {
-          ShellFolder shellFolder = (ShellFolder) file;
-          rend.setText(shellFolder.getDisplayName());
-          rend.setIcon(driveIcon);
-        }
-        else {
+        catch (Throwable t) {
+          // leave it, this is just for newer java versions where ShellFolder is removed
           rend.setIcon(dirIcon);
         }
+
       }
     }
 
     int left = 0;
-    if (file instanceof ShellFolder) {
-      // no left padding
+    try {
+      if (file instanceof ShellFolder) {
+        // no left padding
+      }
+      else {
+        File parent = file.getParentFile();
+        while (parent != null) {
+          left += 16;
+          parent = parent.getParentFile();
+        }
+      }
+
     }
-    else {
+    catch (Throwable t) {
+      // leave it, this is just for newer java versions where ShellFolder is removed
       File parent = file.getParentFile();
       while (parent != null) {
         left += 16;

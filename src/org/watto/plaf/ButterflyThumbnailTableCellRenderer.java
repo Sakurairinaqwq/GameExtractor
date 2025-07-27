@@ -21,11 +21,13 @@ package org.watto.plaf;
 import java.awt.Component;
 import java.awt.FontMetrics;
 import java.awt.Image;
+
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
+
 import org.watto.component.WSLabel;
 import org.watto.component.WSPanel;
 import org.watto.datatype.BlankImageResource;
@@ -67,7 +69,9 @@ public class ButterflyThumbnailTableCellRenderer extends DefaultTableCellRendere
     //WSPanel innerPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"CenteredLayout\" paintBackground=\"false\" opaque=\"true\" />"));
     //innerPanel.add(rend);
 
-    WSPanel outerPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"CenteredLayout\" paintBackground=\"false\" />"));
+    // 3.16.0001 Added "codes" to every XML-built object, so that they're cleaned up when the object is destroyed (otherwise it was being retained in the ComponentRepository)
+
+    WSPanel outerPanel = new WSPanel(XMLReader.read("<WSPanel layout=\"CenteredLayout\" code=\"ButterflyThumbnailTableCellRenderer_getTableCellRendererComponent\" paintBackground=\"false\" />"));
     outerPanel.add(rend);
 
     if (value != null) {
@@ -203,7 +207,7 @@ public class ButterflyThumbnailTableCellRenderer extends DefaultTableCellRendere
             filename += "<br>&nbsp;"; // to force it to be rendered in the same position as a 2-line output
           }
 
-          filename = "<html>" + filename + "</html>";  // to force it to read/paint the <br> as a second line
+          filename = "<html>" + filename + "</html>"; // to force it to read/paint the <br> as a second line
 
           rend.setText_Super(filename);
           //rend.setShortenLongText(true);

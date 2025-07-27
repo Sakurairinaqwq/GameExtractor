@@ -20,6 +20,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -223,7 +224,7 @@ public class Viewer_PAK_P5CK_2_GCT extends ViewerPlugin {
         // X - Pixels
         imageResource = ImageFormatReader.read8BitPaletted(fm, width, height, palette);
         imageResource = ImageFormatReader.doubleAlpha(imageResource);
-        imageResource.setPixels(ImageFormatReader.unswizzlePS2(imageResource.getPixels(), width, height));
+        imageResource.setPixels(ImageSwizzler.unswizzlePS2(imageResource.getPixels(), width, height));
         imageResource = ImageFormatReader.flipVertically(imageResource);
       }
       else {
@@ -235,7 +236,7 @@ public class Viewer_PAK_P5CK_2_GCT extends ViewerPlugin {
 
         // X - Pixels
         byte[] imageBytes = fm.readBytes(width * height / 2);
-        imageBytes = ImageFormatReader.unswizzleSwitch(imageBytes, width, height);
+        imageBytes = ImageSwizzler.unswizzleSwitch(imageBytes, width, height);
 
         FileManipulator imageFM = new FileManipulator(new ByteBuffer(imageBytes));
 

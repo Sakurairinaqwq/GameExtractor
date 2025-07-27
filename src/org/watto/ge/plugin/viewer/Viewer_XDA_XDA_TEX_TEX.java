@@ -21,6 +21,7 @@ import org.watto.datatype.ImageResource;
 import org.watto.datatype.Palette;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.helper.PaletteManager;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -340,7 +341,7 @@ public class Viewer_XDA_XDA_TEX_TEX extends ViewerPlugin {
         if (numPalettes == 1) {
           // X - Color Palette
           int[] palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-          palette = ImageFormatReader.stripePalettePS2(palette);
+          palette = ImageSwizzler.stripePalettePS2(palette);
 
           fm.close();
           fm = new FileManipulator(new ByteBuffer(pixelBytes));
@@ -355,7 +356,7 @@ public class Viewer_XDA_XDA_TEX_TEX extends ViewerPlugin {
 
           for (int p = 0; p < numPalettes; p++) {
             int[] palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-            palette = ImageFormatReader.stripePalettePS2(palette);
+            palette = ImageSwizzler.stripePalettePS2(palette);
 
             // double the alpha
             for (int i = 0; i < 256; i++) {

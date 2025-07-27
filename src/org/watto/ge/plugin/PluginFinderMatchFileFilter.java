@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -16,6 +16,7 @@ package org.watto.ge.plugin;
 
 import java.io.File;
 import java.io.FileFilter;
+
 import sun.awt.shell.ShellFolder;
 
 /**
@@ -44,8 +45,16 @@ public class PluginFinderMatchFileFilter implements FileFilter {
   @Override
   public boolean accept(File file) {
 
-    if (file.isDirectory() || file instanceof ShellFolder) {
-      return true;
+    try {
+      if (file.isDirectory() || file instanceof ShellFolder) {
+        return true;
+      }
+    }
+    catch (Throwable t) {
+      // leave it, this is just for newer java versions where ShellFolder is removed
+      if (file.isDirectory()) {
+        return true;
+      }
     }
 
     if (plugin instanceof AllFilesPlugin) {

@@ -116,6 +116,17 @@ website as well.
 //                                                                                            //
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+Version 3.16.0001
+[I] Small incremental version, with the intention of primarily adding more supported games.
+[A] Previews are cleaned up before opening the new preview, to reduce memory usage
+[A] BC6H Texture2D images can now be displayed from Unity archives
+[A] Additional swizzling functions for consoles have been added
+[B] Unity3D and ResS files larger than 4GB are now read and/or split properly
+[B] When choosing both an Image and a Mesh converter when extracting, the meshes will now be
+    converted to the mesh format instead of the image format.
+[B] Bug fixes for the use of ShellFolder in newer Java versions (eg Java 21+)
+[B] Saving changes to a text file will now save the currently-edited cell as well
+
 Version 3.16
 [I] Support for more games, with a focus on adding previews and write support, where possible.
 [+] Added quickbms.dll as a native library for handling complicated compression types.

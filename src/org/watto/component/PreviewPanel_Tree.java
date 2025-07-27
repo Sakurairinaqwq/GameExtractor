@@ -92,23 +92,6 @@ public class PreviewPanel_Tree extends PreviewPanel implements WSKeyableInterfac
 
     preview.setEditable(false); // default to not-editable
 
-    /*
-     // Moved to onOpenRequest()
-    try {
-      if (SingletonManager.has("CurrentViewer")) {
-        ViewerPlugin viewerPlugin = (ViewerPlugin) SingletonManager.get("CurrentViewer");
-        if (viewerPlugin != null) {
-          if (viewerPlugin.canWrite(this)) {
-          }
-
-        }
-      }
-    }
-    catch (Throwable t) {
-      preview.setEditable(false);
-    }
-    */
-
     add(new JScrollPane(preview), BorderLayout.CENTER);
 
   }
@@ -121,20 +104,7 @@ public class PreviewPanel_Tree extends PreviewPanel implements WSKeyableInterfac
   @Override
   public void onOpenRequest() {
     // 3.16 Added "codes" to every XML-built object, so that they're cleaned up when the object is destroyed (otherwise it was being retained in the ComponentRepository)
-
-    try {
-      if (SingletonManager.has("CurrentViewer")) {
-        ViewerPlugin viewerPlugin = (ViewerPlugin) SingletonManager.get("CurrentViewer");
-        if (viewerPlugin != null) {
-          if (viewerPlugin.canEdit(this)) {
-          }
-
-        }
-      }
-    }
-    catch (Throwable t) {
-      preview.setEditable(false);
-    }
+    preview.setEditable(false);
   }
 
   /**

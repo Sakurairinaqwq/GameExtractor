@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2024 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,6 +15,7 @@ package org.watto.ge.plugin.archive;
 
 import java.io.File;
 
+import org.watto.datatype.FileType;
 import org.watto.datatype.ReplacableResource;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -42,9 +43,16 @@ public class Plugin_W32_ESPX extends ArchivePlugin {
     setProperties(true, false, false, false);
     setCanImplicitReplace(true);
 
-    setGames("Psi Ops");
+    setGames("Psi-Ops: The Mindgate Conspiracy");
     setExtensions("w32");
     setPlatforms("PC");
+
+    setFileTypes(new FileType("tex", "Texture Image", FileType.TYPE_IMAGE),
+        new FileType("tbx", "Texture Buffer Data", FileType.TYPE_OTHER),
+        new FileType("smsh", "3D Mesh", FileType.TYPE_MODEL),
+        new FileType("vbx", "Vertex Buffer Data", FileType.TYPE_OTHER));
+
+    //setTextPreviewExtensions("colours", "rat", "screen", "styles"); // LOWER CASE
 
   }
 
@@ -168,7 +176,7 @@ public class Plugin_W32_ESPX extends ArchivePlugin {
       int[] nameOffsets = new int[numFiles];
       for (int i = 0; i < numFiles; i++) {
         // 4 - File Type/Extension (eg "afsm", "anim", etc)
-        String extension = "." + fm.readString(4);
+        String extension = "." + fm.readString(4).trim(); // trim, to strip off the "space" at the end of the "tex" files, for example
 
         // 4 - File Type ID (74=afsm, 4=anim, etc)
         fm.skip(4);
@@ -212,8 +220,9 @@ public class Plugin_W32_ESPX extends ArchivePlugin {
         }
 
         Resource resource = resources[i];
-        resource.setFilename(filename); // note - setFilename so we still keep the extension!
-        resource.setOriginalName(filename);
+        String name = filename + resource.getName(); // where the existing name is the extension
+        resource.setName(name);
+        resource.setOriginalName(name);
       }
 
       fm.close();

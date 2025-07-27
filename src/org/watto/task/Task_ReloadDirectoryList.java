@@ -18,11 +18,14 @@ import java.awt.Rectangle;
 import java.io.File;
 import java.io.FileFilter;
 import java.util.Hashtable;
+
 import javax.swing.DefaultListModel;
+
 import org.watto.Language;
 import org.watto.component.WSList;
 import org.watto.ge.helper.ShellFolderFile;
 import org.watto.plaf.LookAndFeelManager;
+
 import sun.awt.shell.ShellFolder;
 
 /**
@@ -101,9 +104,14 @@ public class Task_ReloadDirectoryList extends AbstractTask {
     }
 
     File[] files = directory.listFiles(filter);
-    if (directory instanceof ShellFolder) {
-      ShellFolder shellFolder = (ShellFolder) directory;
-      files = shellFolder.listFiles();
+    try {
+      if (directory instanceof ShellFolder) {
+        ShellFolder shellFolder = (ShellFolder) directory;
+        files = shellFolder.listFiles();
+      }
+    }
+    catch (Throwable t) {
+      // leave it, this is just for newer java versions where ShellFolder is removed
     }
 
     if (files == null) {
@@ -115,16 +123,25 @@ public class Task_ReloadDirectoryList extends AbstractTask {
     for (int i = 0; i < files.length; i++) {
       File file = files[i];
       if (file.isDirectory()) {
-        if (file instanceof ShellFolder) {
-          ShellFolderFile shellFolderFile = new ShellFolderFile(file);
-          if (directory instanceof ShellFolderFile) {
-            shellFolderFile.setParent((ShellFolderFile) directory);
+
+        try {
+
+          if (file instanceof ShellFolder) {
+            ShellFolderFile shellFolderFile = new ShellFolderFile(file);
+            if (directory instanceof ShellFolderFile) {
+              shellFolderFile.setParent((ShellFolderFile) directory);
+            }
+            model.addElement(shellFolderFile);
           }
-          model.addElement(shellFolderFile);
+          else {
+            model.addElement(file);
+          }
         }
-        else {
+        catch (Throwable t) {
+          // leave it, this is just for newer java versions where ShellFolder is removed
           model.addElement(file);
         }
+
       }
     }
 
@@ -161,9 +178,14 @@ public class Task_ReloadDirectoryList extends AbstractTask {
     }
 
     File[] files = directory.listFiles(filter);
-    if (directory instanceof ShellFolder) {
-      ShellFolder shellFolder = (ShellFolder) directory;
-      files = shellFolder.listFiles();
+    try {
+      if (directory instanceof ShellFolder) {
+        ShellFolder shellFolder = (ShellFolder) directory;
+        files = shellFolder.listFiles();
+      }
+    }
+    catch (Throwable t) {
+      // leave it, this is just for newer java versions where ShellFolder is removed
     }
 
     if (files == null) {
@@ -180,14 +202,20 @@ public class Task_ReloadDirectoryList extends AbstractTask {
       File file = files[i];
       if (file.isDirectory()) {
 
-        if (file instanceof ShellFolder) {
-          ShellFolderFile shellFolderFile = new ShellFolderFile(file);
-          if (directory instanceof ShellFolderFile) {
-            shellFolderFile.setParent((ShellFolderFile) directory);
+        try {
+          if (file instanceof ShellFolder) {
+            ShellFolderFile shellFolderFile = new ShellFolderFile(file);
+            if (directory instanceof ShellFolderFile) {
+              shellFolderFile.setParent((ShellFolderFile) directory);
+            }
+            model.addElement(shellFolderFile);
           }
-          model.addElement(shellFolderFile);
+          else {
+            model.addElement(file);
+          }
         }
-        else {
+        catch (Throwable t) {
+          // leave it, this is just for newer java versions where ShellFolder is removed
           model.addElement(file);
         }
 

@@ -20,6 +20,7 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -256,7 +257,7 @@ public class Viewer_DAT_103_DATTEX extends ViewerPlugin {
 
       // X - Palette (RGBA)
       int[] palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-      palette = ImageFormatReader.stripePalettePS2(palette); // Palette is PS2-striped
+      palette = ImageSwizzler.stripePalettePS2(palette); // Palette is PS2-striped
       palette = ImageFormatReader.doubleAlpha(palette);
 
       ImageResource[] firstImageResources = new ImageResource[numImages];
@@ -423,7 +424,7 @@ public class Viewer_DAT_103_DATTEX extends ViewerPlugin {
 
       // X - Palette (RGBA)
       palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-      palette = ImageFormatReader.stripePalettePS2(palette); // Palette is PS2-striped
+      palette = ImageSwizzler.stripePalettePS2(palette); // Palette is PS2-striped
       palette = ImageFormatReader.doubleAlpha(palette);
 
       ImageResource[] secondImageResources = new ImageResource[numImages];
@@ -622,7 +623,7 @@ public class Viewer_DAT_103_DATTEX extends ViewerPlugin {
 
       // X - Palette (RGBA)
       int[] palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-      palette = ImageFormatReader.stripePalettePS2(palette); // Palette is PS2-striped
+      palette = ImageSwizzler.stripePalettePS2(palette); // Palette is PS2-striped
       palette = ImageFormatReader.doubleAlpha(palette);
 
       ImageResource[] imageResources = new ImageResource[numImages];
@@ -830,7 +831,7 @@ public class Viewer_DAT_103_DATTEX extends ViewerPlugin {
 
       // X - Palette (RGBA)
       int[] palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-      palette = ImageFormatReader.stripePalettePS2(palette); // Palette is PS2-striped
+      palette = ImageSwizzler.stripePalettePS2(palette); // Palette is PS2-striped
       palette = ImageFormatReader.doubleAlpha(palette);
 
       fm.close();

@@ -15,7 +15,9 @@
 package org.watto.task;
 
 import java.io.File;
+
 import javax.swing.SwingUtilities;
+
 import org.watto.ChangeMonitor;
 import org.watto.ErrorLogger;
 import org.watto.Language;
@@ -80,6 +82,13 @@ public class Task_ReadArchive extends AbstractTask {
       return;
     }
 
+    // [3.16.0001] if the file is empty, don't even bother trying to open it
+    if (path.length() == 0) {
+      WSPopup.showError("ReadArchive_FileNotAnArchive", true);
+      TaskProgressManager.stopTask();
+      return;
+    }
+
     // ask to save the modified archive
     if (GameExtractor.getInstance().promptToSave()) {
       return;
@@ -102,6 +111,10 @@ public class Task_ReadArchive extends AbstractTask {
       boolean wasBMS = checkForBMS(path);
       if (wasBMS) {
         return;
+      }
+
+      if (Settings.getBoolean("ScanFileIfOpenFailed")) {
+        // Run the FormatScanner
       }
 
       WSPopup.showError("ReadArchive_NoPluginsFound", true);
@@ -149,6 +162,10 @@ public class Task_ReadArchive extends AbstractTask {
       boolean wasBMS = checkForBMS(path);
       if (wasBMS) {
         return;
+      }
+
+      if (Settings.getBoolean("ScanFileIfOpenFailed")) {
+        // Run the FormatScanner
       }
 
       // Also shows this message if the scanner does not exist!

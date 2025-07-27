@@ -23,10 +23,12 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.net.URI;
 import java.util.Arrays;
+
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+
 import org.watto.Language;
 import org.watto.Settings;
 import org.watto.SingletonManager;
@@ -487,6 +489,9 @@ public class SidePanel_Preview extends WSPanelPlugin implements WSSelectableInte
     boolean previewOpened = false;
 
     if (plugins != null && plugins.length > 0) {
+
+      // [3.16.0001] First, lets close the existing preview, to free up memory
+      onCloseRequest();
 
       Arrays.sort(plugins);
 

@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.viewer;
 
 import java.awt.Image;
+
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_Image;
 import org.watto.datatype.Archive;
@@ -23,6 +24,7 @@ import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageManipulator;
+import org.watto.ge.helper.ImageSwizzler;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
@@ -278,7 +280,7 @@ public class Viewer_DAT_DAT_IFF_TXTR extends ViewerPlugin {
 
         // 1024 - Color Palette (RGBA)
         int[] palette = ImageFormatReader.readPaletteRGBA(fm, 256);
-        palette = ImageFormatReader.stripePalettePS2(palette);
+        palette = ImageSwizzler.stripePalettePS2(palette);
 
         int[] pixels = new int[numPixels];
         for (int i = 0; i < numPixels; i++) {
@@ -419,7 +421,7 @@ public class Viewer_DAT_DAT_IFF_TXTR extends ViewerPlugin {
       im.convertToPaletted();
       im.changeColorCount(256);
       int[] palette = im.getPalette();
-      palette = ImageFormatReader.stripePalettePS2(palette);
+      palette = ImageSwizzler.stripePalettePS2(palette);
       im.setPalette(palette);
 
       // Generate all the mipmaps of the image

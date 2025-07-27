@@ -211,11 +211,24 @@ public class Viewer_UE4_SoundWave_7 extends ViewerPlugin {
       // 16 - null
       // 4 - null
       // 4 - File Directory Offset?
-      // 4 - Unknown (5)
+      fm.skip(32);
+
+      // [3.16.0001] Some have real names here, instead of "None"... (Outliver: Tribulation)
+      // 4 - Package Name Length (including null) (5)
+      int nameLength = fm.readInt();
+      try {
+        FieldValidator.checkFilenameLength(nameLength);
+      }
+      catch (Throwable t) {
+        // might have had the options 4-byte null earlier
+        nameLength = fm.readInt();
+      }
       // 4 - Package Name (None)
-      // 4 - null
-      // 1 - Unknown (128)
-      fm.skip(45);
+      // 1 - null Package Name Terminator
+      fm.skip(nameLength);
+
+      // 4 - Unknown
+      fm.skip(4);
 
       // 4 - Number of Names
       int nameCount = fm.readInt();
@@ -226,9 +239,19 @@ public class Viewer_UE4_SoundWave_7 extends ViewerPlugin {
       FieldValidator.checkOffset(nameDirOffset, arcSize);
 
       // 8 - null
+      fm.skip(8);
+
       // 4 - Number Of Exports
+      int exportCount = fm.readInt();
+
       // 4 - Exports Directory Offset
-      fm.skip(16);
+      long exportDirOffset = IntConverter.unsign(fm.readInt());
+
+      if (exportCount == 0 && exportDirOffset == 0) {
+        // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+        exportCount = fm.readInt();
+        exportDirOffset = IntConverter.unsign(fm.readInt());
+      }
 
       // 4 - Number Of Imports
       int importCount = fm.readInt();
@@ -339,6 +362,36 @@ public class Viewer_UE4_SoundWave_7 extends ViewerPlugin {
       // 8 - Type ID (points to "OGG" for a Sound File)
       long typeID = fm.readLong();
       String type = UE4Helper.getName(typeID);
+
+      if (type == null) {
+        // [3.16.0001] version 7 uasset files? (Outliver: Tribulation)
+        // check here, as maybe it *should* be in an uexp file
+        if (!inUExp) {
+          FileManipulator extractedFM = extractRelatedResource(fm, "uexp", true);
+          if (extractedFM != null) {
+            fm = extractedFM;
+            filesDirOffset = 0; // so when we seek down further, it goes to the start of the uexp file
+            arcSize += fm.getLength(); // add the size of this file to the size of the uassets file
+            inUExp = true;
+
+            // REPEAT CODE FROM EARLIER
+
+            UE4Helper.readProperties(fm); // discard all this - we don't need it, we just need to get passed it all to find the image data
+
+            // 4 - null
+            fm.skip(4);
+
+            // 2 - Flags (1/3)
+            // 2 - Flags (1/0)
+            // 4 - Unknown (1)
+            fm.skip(8);
+
+            // 8 - Type ID (points to "OGG" for a Sound File)
+            typeID = fm.readLong();
+            type = UE4Helper.getName(typeID);
+          }
+        }
+      }
 
       if (type == null || type.equals("OGG") || type.startsWith("OGG")) { // some files have OGG, others have OGG10025600-1-1-1-1-1
         // 4 - Unknown (72)
