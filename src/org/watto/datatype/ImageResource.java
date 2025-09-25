@@ -19,7 +19,9 @@ import java.awt.image.ColorModel;
 import java.awt.image.DirectColorModel;
 import java.awt.image.MemoryImageSource;
 import java.awt.image.PixelGrabber;
+
 import javax.swing.JLabel;
+
 import org.watto.ErrorLogger;
 import org.watto.Settings;
 import org.watto.ge.plugin.resource.Resource_Property;
@@ -35,6 +37,8 @@ public class ImageResource {
 
   int thumbnailSize = 100; // default size
 
+  int animationSpeed = 100; // default 100ms between frames
+
   /** Have the pixels been shrunk to the size of a thumbnail, or are they still the full image? **/
   boolean imageShrunk = false;
 
@@ -45,17 +49,17 @@ public class ImageResource {
   Resource_Property[] properties = null;
 
   ImageResource nextFrame = null;
-  
+
   public int getFrameCount() {
     // we need to go through and count up all the frames until we're back at this one.
     int frameCount = 1;
-    
+
     ImageResource currentFrame = nextFrame;
     while (currentFrame != null && currentFrame != this) {
       frameCount++;
       currentFrame = currentFrame.getNextFrame();
     }
-    
+
     return frameCount;
   }
 
@@ -146,6 +150,14 @@ public class ImageResource {
     this.pixels = pixels;
     this.width = width;
     this.height = height;
+  }
+
+  public int getAnimationSpeed() {
+    return animationSpeed;
+  }
+
+  public void setAnimationSpeed(int animationSpeed) {
+    this.animationSpeed = animationSpeed;
   }
 
   /**
@@ -588,8 +600,7 @@ public class ImageResource {
     }
 
   }
-  
-  
+
   /**
   **********************************************************************************************
   
@@ -599,13 +610,13 @@ public class ImageResource {
     if (pixels.length <= 0) {
       return;
     }
-try {
-    Image image = getImage();
-    image = image.getScaledInstance(width,height, Image.SCALE_SMOOTH);
+    try {
+      Image image = getImage();
+      image = image.getScaledInstance(width, height, Image.SCALE_SMOOTH);
 
-    // now that we have a resized image, store it on the ImageResource, replacing the original-sized image
-    PixelGrabber pixelGrabber = new PixelGrabber(image, 0, 0, width, height, false);
-    pixelGrabber.grabPixels();
+      // now that we have a resized image, store it on the ImageResource, replacing the original-sized image
+      PixelGrabber pixelGrabber = new PixelGrabber(image, 0, 0, width, height, false);
+      pixelGrabber.grabPixels();
 
       // get the pixels, and convert them to positive values in an int[] array
       this.pixels = (int[]) pixelGrabber.getPixels();

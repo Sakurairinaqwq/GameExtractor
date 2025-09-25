@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -243,6 +243,38 @@ public class ImageFormatWriter {
       int byte2 = g | b;
 
       // OUTPUT = ARGB4444
+      fm.writeByte(byte1);
+      fm.writeByte(byte2);
+    }
+  }
+
+  /**
+   **********************************************************************************************
+   * Writes an RGBA4444 image
+   **********************************************************************************************
+   **/
+  public static void writeRGBA4444(FileManipulator fm, ImageResource imageResource) {
+    int[] pixels = imageResource.getImagePixels();
+
+    int numPixels = pixels.length;
+
+    for (int i = 0; i < numPixels; i++) {
+      // INPUT = ARGB
+      int pixel = pixels[i];
+
+      // 4bits - Alpha
+      // 4bits - Blue
+      // 4bits - Green
+      // 4bits - Red
+      int a = ((((pixel >> 24) & 255) / 16) & 15);
+      int r = ((((pixel >> 16) & 255) / 16) & 15);
+      int g = ((((pixel >> 8) & 255) / 16) & 15);
+      int b = ((((pixel) & 255) / 16) & 15);
+
+      int byte1 = (r << 4) | g;
+      int byte2 = (b << 4) | a;
+
+      // OUTPUT = RGBA4444
       fm.writeByte(byte1);
       fm.writeByte(byte2);
     }
@@ -1206,6 +1238,58 @@ public class ImageFormatWriter {
       fm.writeByte(rPixel);
       fm.writeByte(gPixel);
     }
+  }
+
+  /**
+   **********************************************************************************************
+  Converts alpha values 0-255 to 0-127
+   **********************************************************************************************
+   **/
+  public static ImageResource halveAlpha(ImageResource image) {
+    int[] pixels = image.getPixels();
+    int numPixels = pixels.length;
+
+    int[] reversedPixels = new int[numPixels];
+    for (int i = 0; i < numPixels; i++) {
+      int pixel = pixels[i];
+
+      int alphaValue = pixel >> 24;
+      if (alphaValue < 0) {
+        alphaValue = 256 + alphaValue;
+      }
+
+      alphaValue /= 2;
+
+      reversedPixels[i] = (pixel & 0xFFFFFF) | (alphaValue << 24);
+    }
+
+    image.setPixels(reversedPixels);
+    return image;
+  }
+
+  /**
+   **********************************************************************************************
+  Converts alpha values 0-255 to 0-127
+   **********************************************************************************************
+   **/
+  public static int[] halveAlpha(int[] pixels) {
+    int numPixels = pixels.length;
+
+    int[] reversedPixels = new int[numPixels];
+    for (int i = 0; i < numPixels; i++) {
+      int pixel = pixels[i];
+
+      int alphaValue = pixel >> 24;
+      if (alphaValue < 0) {
+        alphaValue = 256 + alphaValue;
+      }
+
+      alphaValue /= 2;
+
+      reversedPixels[i] = (pixel & 0xFFFFFF) | (alphaValue << 24);
+    }
+
+    return reversedPixels;
   }
 
   /**

@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -1762,9 +1762,17 @@ public class ImageFormatReader {
 
         int[] alphaMap = null;
 
-        // skip the alpha data
         if (format == 3) {
-          fm.skip(8);
+          alphaMap = new int[16];
+
+          // 4bit alpha values for each pixel
+          for (int i = 0; i < 16; i += 2) {
+            int alpha = ByteConverter.unsign(fm.readByte());
+
+            alphaMap[i + 1] = ((alpha >> 4) & 15) * 16;
+            alphaMap[i] = (alpha & 15) * 16;
+          }
+
         }
         else if (format == 5) {
           int[] alpha = new int[8];
@@ -1850,6 +1858,16 @@ public class ImageFormatReader {
             for (int bx = 0; bx < 4; ++bx) {
               int code = (bits >> (((by << 2) + bx) << 1)) & 0x3;
               data[(y + by) * width + x + bx] = ((colors[code] & 0xFFFFFF) | (alphaMap[alphaPos++] << 24));
+            }
+          }
+        }
+        else if (format == 3) {
+          int alphaPixel = 0;
+          for (int by = 0; by < 4; ++by) {
+            for (int bx = 0; bx < 4; ++bx) {
+              int code = (bits >> (((by << 2) + bx) << 1)) & 0x3;
+              data[(y + by) * width + x + bx] = (colors[code] & 0xFFFFFF) | alphaMap[alphaPixel] << 24;
+              alphaPixel++;
             }
           }
         }

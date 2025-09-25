@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.resource;
 
 import java.io.File;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.plugin.ExporterPlugin;
 import org.watto.ge.plugin.exporter.Exporter_Custom_WAV_RawAudio;
@@ -218,6 +219,10 @@ public class Resource_WAV_RawAudio extends Resource {
 
   public void setAudioProperties(int frequency, int bitrate, int channels) {
     setAudioProperties(frequency, (short) bitrate, (short) channels);
+  }
+
+  public void setAudioProperties(int frequency, int bitrate, int channels, boolean signed) {
+    setAudioProperties(frequency, (short) bitrate, (short) channels, signed);
   }
 
   public void setAudioProperties(int frequency, short bitrate, short channels, boolean signed) {

@@ -18,11 +18,13 @@ import java.io.File;
 
 import org.watto.ErrorLogger;
 import org.watto.Language;
+import org.watto.component.PreviewPanel;
 import org.watto.datatype.Archive;
 import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
+import org.watto.ge.plugin.viewer.Viewer_DATTEXARC_TEX;
 import org.watto.io.FileManipulator;
 import org.watto.task.TaskProgressManager;
 
@@ -55,6 +57,8 @@ public class Plugin_DATTEXARC extends ArchivePlugin {
     //setTextPreviewExtensions("colours", "rat", "screen", "styles"); // LOWER CASE
 
     //setCanScanForFileTypes(true);
+
+    setCanConvertOnReplace(true);
 
   }
 
@@ -254,6 +258,47 @@ public class Plugin_DATTEXARC extends ArchivePlugin {
     */
 
     return null;
+  }
+
+  /**
+   **********************************************************************************************
+   When replacing files, if the file is of a certain type, it will be converted before replace
+   @param resourceBeingReplaced the Resource in the archive that is being replaced
+   @param fileToReplaceWith the file on your PC that will replace the Resource. This file is the
+          one that will be converted into a different format, if applicable.
+   @return the converted file, if conversion was applicable/successful, else the original fileToReplaceWith
+   **********************************************************************************************
+   **/
+  @Override
+  public File convertOnReplace(Resource resourceBeingReplaced, File fileToReplaceWith) {
+    try {
+
+      PreviewPanel imagePreviewPanel = loadFileForConversion(resourceBeingReplaced, fileToReplaceWith, "dattexarc_tex");
+      if (imagePreviewPanel == null) {
+        // no conversion needed, or wasn't able to be converted
+        return fileToReplaceWith;
+      }
+
+      // The plugin that will do the conversion
+      Viewer_DATTEXARC_TEX converterPlugin = new Viewer_DATTEXARC_TEX();
+
+      String beingReplacedExtension = resourceBeingReplaced.getExtension();
+      File destination = new File(fileToReplaceWith.getAbsolutePath() + "." + beingReplacedExtension);
+      if (destination.exists()) {
+        destination.delete();
+      }
+
+      FileManipulator fmOut = new FileManipulator(destination, true);
+      converterPlugin.replace(resourceBeingReplaced, imagePreviewPanel, fmOut);
+      fmOut.close();
+
+      return destination;
+
+    }
+    catch (Throwable t) {
+      ErrorLogger.log(t);
+      return fileToReplaceWith;
+    }
   }
 
 }

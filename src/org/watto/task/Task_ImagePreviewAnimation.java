@@ -15,6 +15,7 @@
 package org.watto.task;
 
 import javax.swing.ImageIcon;
+
 import org.watto.ErrorLogger;
 import org.watto.Language;
 import org.watto.component.WSLabel;
@@ -39,6 +40,8 @@ public class Task_ImagePreviewAnimation extends AbstractTask {
   /** The preview panel is being destroyed, so it asks to stop the animation **/
   boolean stopRequested = false;
 
+  int speed = 100;
+
   /**
   **********************************************************************************************
   
@@ -47,6 +50,13 @@ public class Task_ImagePreviewAnimation extends AbstractTask {
   public Task_ImagePreviewAnimation(ImageResource imageResource, WSLabel label) {
     this.imageResource = imageResource;
     this.label = label;
+
+    if (imageResource != null) {
+      speed = imageResource.getAnimationSpeed();
+    }
+    if (speed < 0) {
+      speed = 100;
+    }
   }
 
   /**
@@ -58,7 +68,7 @@ public class Task_ImagePreviewAnimation extends AbstractTask {
   public void redo() {
     try {
       while (true) {
-        Thread.sleep(100);
+        Thread.sleep(speed);
 
         if (stopRequested) {
           break;

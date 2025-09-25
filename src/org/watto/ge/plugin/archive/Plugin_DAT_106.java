@@ -114,6 +114,10 @@ public class Plugin_DAT_106 extends ArchivePlugin {
       int numFiles = fm.readInt() - 1;
       FieldValidator.checkNumFiles(numFiles);
 
+      if (numFiles == 1) {
+        return null; // false positive
+      }
+
       Resource[] resources = new Resource[numFiles];
 
       TaskProgressManager.setMaximum(numFiles);

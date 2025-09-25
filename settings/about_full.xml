@@ -37,6 +37,7 @@
 <li>aquarria (XNB Reader and Decoder)</li>
 <li>bcdec</li>
 <li>bc7enc</li>
+<li>cabParser</li>
 <li>Crunch</li>
 <li>dsdecmp</li>
 <li>FFMPEG</li>
@@ -75,6 +76,7 @@
 <li>UnRAR</li>
 <li>unxwb</li>
 <li>vgmstream</li>
+<li>WTExtractor</li>
 <li>XZ for Java</li>
 <li>zip4j</li>
 </ul>

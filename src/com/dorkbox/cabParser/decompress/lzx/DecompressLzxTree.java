@@ -13,33 +13,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.dorkbox.cabParser.decompress.lzx;
 
-import com.dorkbox.cabParser.structure.CorruptCabException;
+import com.dorkbox.cabParser.CorruptCabException;
 
 final class DecompressLzxTree implements LZXConstants {
-
-  private static final byte[] array = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
   private int size;
   private int[] aa;
-
   int[] LENS;
+
   private int[] a1;
   private int[] a2;
-
   private int[] table;
+
   private int b1;
   private int b2;
   private int b3;
-
   private int b4;
-  private DecompressLzx decompressor;
 
+  private DecompressLzx decompressor;
   private DecompressLzxTree root;
+
   private int[] c1 = new int[17];
   private int[] c2 = new int[17];
   private int[] c3 = new int[18];
+  private static final byte[] array = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
 
   DecompressLzxTree(int size, int paramInt2, DecompressLzx decompressor, DecompressLzxTree root) {
     this.size = size;
@@ -54,6 +52,70 @@ final class DecompressLzxTree implements LZXConstants {
     this.table = new int[this.b2];
     this.aa = new int[this.size];
     this.LENS = new int[this.size];
+  }
+
+  void reset() {
+    for (int i = 0; i < this.size; i++) {
+      this.LENS[i] = 0;
+      this.aa[i] = 0;
+    }
+  }
+
+  void readLengths() {
+    for (int i = 0; i < this.size; i++) {
+      this.LENS[i] = this.decompressor.readBits(3);
+    }
+  }
+
+  void readLengths(int first, int last) throws CorruptCabException {
+    for (int i = 0; i < 20; i++) {
+      this.root.LENS[i] = (byte) this.decompressor.readBits(4);
+    }
+
+    this.root.buildTable();
+
+    for (int i = first; i < last; i++) {
+      int k = this.root.decodeElement();
+      int j;
+
+      if (k == 17) {
+        j = this.decompressor.readBits(4) + 4;
+        if (i + j >= last) {
+          j = last - i;
+        }
+        while (j-- > 0) {
+          this.LENS[i++] = 0;
+        }
+        i--;
+      }
+      else if (k == 18) {
+        j = this.decompressor.readBits(5) + 20;
+        if (i + j >= last) {
+          j = last - i;
+        }
+        while (j-- > 0) {
+          this.LENS[i++] = 0;
+        }
+        i--;
+      }
+      else if (k == 19) {
+        j = this.decompressor.readBits(1) + 4;
+        if (i + j >= last) {
+          j = last - i;
+        }
+
+        k = this.root.decodeElement();
+        int m = array[this.aa[i] - k + 17];
+
+        while (j-- > 0) {
+          this.LENS[i++] = m;
+        }
+        i--;
+      }
+      else {
+        this.LENS[i] = array[this.aa[i] - k + 17];
+      }
+    }
   }
 
   void buildTable() throws CorruptCabException {
@@ -181,6 +243,10 @@ final class DecompressLzxTree implements LZXConstants {
     }
   }
 
+  void read() {
+    System.arraycopy(this.LENS, 0, this.aa, 0, this.size);
+  }
+
   int decodeElement() {
     int i = this.table[this.decompressor.bitsLeft >>> this.b4 & this.b3];
 
@@ -201,73 +267,5 @@ final class DecompressLzxTree implements LZXConstants {
 
     this.decompressor.readNumberBits(this.LENS[i]);
     return i;
-  }
-
-  void read() {
-    System.arraycopy(this.LENS, 0, this.aa, 0, this.size);
-  }
-
-  void readLengths() {
-    for (int i = 0; i < this.size; i++) {
-      this.LENS[i] = this.decompressor.readBits(3);
-    }
-  }
-
-  void readLengths(int first, int last) throws CorruptCabException {
-    for (int i = 0; i < 20; i++) {
-      this.root.LENS[i] = (byte) this.decompressor.readBits(4);
-    }
-
-    this.root.buildTable();
-
-    for (int i = first; i < last; i++) {
-      int k = this.root.decodeElement();
-      int j;
-
-      if (k == 17) {
-        j = this.decompressor.readBits(4) + 4;
-        if (i + j >= last) {
-          j = last - i;
-        }
-        while (j-- > 0) {
-          this.LENS[i++] = 0;
-        }
-        i--;
-      }
-      else if (k == 18) {
-        j = this.decompressor.readBits(5) + 20;
-        if (i + j >= last) {
-          j = last - i;
-        }
-        while (j-- > 0) {
-          this.LENS[i++] = 0;
-        }
-        i--;
-      }
-      else if (k == 19) {
-        j = this.decompressor.readBits(1) + 4;
-        if (i + j >= last) {
-          j = last - i;
-        }
-
-        k = this.root.decodeElement();
-        int m = array[this.aa[i] - k + 17];
-
-        while (j-- > 0) {
-          this.LENS[i++] = m;
-        }
-        i--;
-      }
-      else {
-        this.LENS[i] = array[this.aa[i] - k + 17];
-      }
-    }
-  }
-
-  void reset() {
-    for (int i = 0; i < this.size; i++) {
-      this.LENS[i] = 0;
-      this.aa[i] = 0;
-    }
   }
 }

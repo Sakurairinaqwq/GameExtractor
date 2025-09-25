@@ -1,32 +1,32 @@
-
+/*
+ * Application:  Game Extractor
+ * Author:       wattostudios
+ * Website:      http://www.watto.org
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
+ *
+ * License Information:
+ * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
+ * published by the Free Software Foundation; either version 2 of the License, or (at your option) any later versions. This
+ * program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranties
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License at http://www.gnu.org for more
+ * details. For further information on this application, refer to the authors' website.
+ */
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
-import org.watto.task.TaskProgressManager;
+
+import org.watto.Language;
+import org.watto.Settings;
 import org.watto.datatype.Archive;
+import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
-////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                            //
-//                                       GAME EXTRACTOR                                       //
-//                               Extensible Game Archive Editor                               //
-//                                http://www.watto.org/extract                                //
-//                                                                                            //
-//                           Copyright (C) 2002-2009  WATTO Studios                           //
-//                                                                                            //
-// This program is free software; you can redistribute it and/or modify it under the terms of //
-// the GNU General Public License published by the Free Software Foundation; either version 2 //
-// of the License, or (at your option) any later versions. This program is distributed in the //
-// hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranties //
-// of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License //
-// at http://www.gnu.org for more details. For updates and information about this program, go //
-// to the WATTO Studios website at http://www.watto.org or email watto@watto.org . Thanks! :) //
-//                                                                                            //
-////////////////////////////////////////////////////////////////////////////////////////////////
 import org.watto.ge.plugin.ExporterPlugin;
+import org.watto.ge.plugin.exporter.Exporter_Default;
 import org.watto.ge.plugin.exporter.Exporter_ZLib;
 import org.watto.io.FileManipulator;
+import org.watto.task.TaskProgressManager;
 
 /**
 **********************************************************************************************
@@ -45,11 +45,16 @@ public class Plugin_ADF_2 extends ArchivePlugin {
     super("ADF_2", "ADF_2");
 
     //         read write replace rename
-    setProperties(true, false, false, false);
+    setProperties(true, false, true, false);
 
-    setGames("Arsenal 2");
+    setGames("A.R.S.E.N.A.L Extended Power");
     setExtensions("adf");
     setPlatforms("PC");
+
+    // MUST BE LOWER CASE !!!
+    setFileTypes(new FileType("rgb", "RGB Image Archive", FileType.TYPE_ARCHIVE));
+
+    setTextPreviewExtensions("acf", "adu", "nam", "tab"); // LOWER CASE
 
   }
 
@@ -111,7 +116,7 @@ public class Plugin_ADF_2 extends ArchivePlugin {
 
       // RESETTING THE GLOBAL VARIABLES
 
-      FileManipulator fm = new FileManipulator(path, false);
+      FileManipulator fm = new FileManipulator(path, false, 255); // small quick reads
 
       int numFiles = Archive.getMaxFiles(4);
 
@@ -124,7 +129,19 @@ public class Plugin_ADF_2 extends ArchivePlugin {
       int realNumFiles = 0;
       while (fm.getOffset() < fm.getLength()) {
         // X - Encrypted Filename? (null)
-        fm.readNullString();
+        byte[] nameBytes = new byte[255]; // guess max
+
+        int currentByte = fm.readByte();
+        int numBytes = 0;
+        while (currentByte != 0) {
+          nameBytes[numBytes] = (byte) ((currentByte - 66) & 0xFF);
+          numBytes++;
+          currentByte = fm.readByte();
+        }
+
+        byte[] shortNameBytes = new byte[numBytes - 2]; // the filename has <> characters around it, so skip those when copied to the shorter array
+        System.arraycopy(nameBytes, 1, shortNameBytes, 0, numBytes - 2);
+        String filename = new String(shortNameBytes);
 
         // 4 - Decompressed File Size
         int decompLength = fm.readInt();
@@ -137,7 +154,7 @@ public class Plugin_ADF_2 extends ArchivePlugin {
         long offset = (int) fm.getOffset();
         fm.skip(length);
 
-        String filename = Resource.generateFilename(realNumFiles);
+        //String filename = Resource.generateFilename(realNumFiles);
 
         //path,id,name,offset,length,decompLength,exporter
         resources[realNumFiles] = new Resource(path, filename, offset, length, decompLength, exporter);
@@ -156,6 +173,97 @@ public class Plugin_ADF_2 extends ArchivePlugin {
     catch (Throwable t) {
       logError(t);
       return null;
+    }
+  }
+
+  /**
+   **********************************************************************************************
+   * Writes an [archive] File with the contents of the Resources. The archive is written using
+   * data from the initial archive - it isn't written from scratch.
+   **********************************************************************************************
+   **/
+  @Override
+  public void replace(Resource[] resources, File path) {
+    try {
+
+      FileManipulator fm = new FileManipulator(path, true);
+      FileManipulator src = new FileManipulator(new File(Settings.getString("CurrentArchive")), false);
+
+      int numFiles = resources.length;
+      TaskProgressManager.setMaximum(numFiles);
+
+      ExporterPlugin defaultExporter = Exporter_Default.getInstance();
+
+      // Write Directory and Files
+      TaskProgressManager.setMessage(Language.get("Progress_WritingFiles"));
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+        long length = resource.getDecompressedLength();
+
+        // X - Encrypted Filename (subtract 66 from each byte)
+        // 1 - null Filename Terminator
+        int currentByte = src.readByte();
+        while (currentByte != 0) {
+          fm.writeByte(currentByte);
+          currentByte = src.readByte();
+        }
+        fm.writeByte(0);
+
+        if (resource.isReplaced()) {
+          // REPLACED
+
+          // 4 - Decompressed File Size
+          fm.writeInt(length);
+          src.skip(4);
+
+          // 4 - Compressed File Size
+          long offsetForLength = fm.getOffset();
+
+          int srcCompLength = src.readInt();
+          fm.writeInt(srcCompLength);
+
+          // X - File Data
+          ExporterPlugin exporter = new Exporter_ZLib();
+          long compLength = write(exporter, resource, fm);
+
+          long endPos = fm.getOffset();
+
+          fm.seek(offsetForLength);
+          fm.writeInt(compLength);
+          fm.seek(endPos);
+
+          src.skip(srcCompLength);
+        }
+        else {
+          // ORIGINAL
+
+          // 4 - Decompressed File Size
+          fm.writeBytes(src.readBytes(4));
+
+          // 4 - Compressed File Size
+          int srcCompLength = src.readInt();
+          fm.writeInt(srcCompLength);
+
+          // X - File Data
+          ExporterPlugin originalExporter = resource.getExporter();
+          resource.setExporter(defaultExporter);
+          write(resource, fm);
+          resource.setExporter(originalExporter);
+
+          src.skip(srcCompLength);
+        }
+
+      }
+
+      //ExporterPlugin exporter = new Exporter_ZLib();
+      //long[] compressedLengths = write(exporter,resources,fm);
+
+      src.close();
+      fm.close();
+
+    }
+    catch (Throwable t) {
+      logError(t);
     }
   }
 

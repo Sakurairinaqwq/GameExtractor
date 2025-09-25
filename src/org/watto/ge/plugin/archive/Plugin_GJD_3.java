@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Archive;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -52,6 +53,8 @@ public class Plugin_GJD_3 extends ArchivePlugin {
     //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
     //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
     //             );
+
+    //setCanScanForFileTypes(true);
 
   }
 
@@ -275,6 +278,26 @@ public class Plugin_GJD_3 extends ArchivePlugin {
       logError(t);
       return null;
     }
+  }
+
+  /**
+  **********************************************************************************************
+  If an archive doesn't have filenames stored in it, the scanner can come here to try to work out
+  what kind of file a Resource is. This method allows the plugin to provide additional plugin-specific
+  extensions, which will be tried before any standard extensions.
+  @return null if no extension can be determined, or the extension if one can be found
+  **********************************************************************************************
+  **/
+  @Override
+  public String guessFileExtension(Resource resource, byte[] headerBytes, int headerInt1, int headerInt2, int headerInt3, short headerShort1, short headerShort2, short headerShort3, short headerShort4, short headerShort5, short headerShort6) {
+
+    /*
+    if (headerInt1 == 2037149520) {
+      return "js";
+    }
+    */
+
+    return null;
   }
 
 }

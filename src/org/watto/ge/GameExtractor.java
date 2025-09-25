@@ -53,7 +53,7 @@ import javax.swing.JFrame;
 - Archive where multiple files are stored in a single ZLib block, so you need to decompress the ZLib, then find the file within it - Plugin_RSB_1BSR
 - Archive where the user is asked to choose an option (from a ComboBox) in a popup when saving - Plugin_PAK_EYEDENTITY (see start of replace() method)
 - *Archive where you can replace images in an archive, with conversion if it's not the right format (short method) - Plugin_RESOURCES_2
-- Archive where you can replace images in an archive, and if it's not the right format, it will convert the image format on replace (Plugin_POD_POD6 (audio and image) and Plugin_XAF_XAF (image) and Plugin_BNK_XBNK (audio) and Plugin_BAG_6 (image) and Plugin_BAG)
+- Archive where you can replace files in an archive, and if it's not the right format, it will convert the image format on replace (Plugin_POD_POD6 (audio and image) and Plugin_XAF_XAF (image) and Plugin_BNK_XBNK (audio) and Plugin_BAG_6 (image) and Plugin_BAG)
 - Archive where you can replace images in an archive, and if it's not the right format, it will convert the image format (AND where a file contains multiple frames) (Plugin_BIG_BIGF)
 - Archive where filenames are read from an external file list, and matched with hashes stored in the archive (RSDK_RSDK)
 - Archive where, when saving, a directory file is written, as well as multiple other files, which are all then compressed (LHD)
@@ -65,6 +65,7 @@ import javax.swing.JFrame;
 - Image Viewer where the image width and height are stored on the Resource by the Plugin, so need to be retrieved before processing the image in the Viewer (DAT_66_BITMAP)
 - Image Viewer (example WRITE code) - Viewer_XAF_XAF_STX
 - Image Viewer (example REPLACE code) - Viewer_REZ_REZMGR_DTX (also need to refer to Plugin_REZ_REZMGR to see where replace() is called)
+- Image Viewer where the user is shown a message if the palette couldn't be loaded - Viewer_GLB_GLB2_GLBTEX
 - Audio Viewer where raw audio is read from a file, a WAV header is prepended, and it's played as an ordinary WAV file - Viewer_A00_MEL
 - 3D Model Viewer - VPK_VPK_VMESHC or Viewer_Unity3D_MESH or Viewer_POD_BIN or Viewer_BMOD_OMOD_OBST
 - 3D Model Viewer with Textures and multiple Mesh Groups - Viewer_GTC_MD2_MDL3
@@ -351,6 +352,7 @@ import org.watto.task.Task;
 import org.watto.task.TaskProgressManager;
 import org.watto.task.Task_CheckForModifiedExportFiles;
 import org.watto.task.Task_NewArchive;
+import org.watto.task.Task_Popup_JavaFXMissing;
 import org.watto.task.Task_Popup_PromptToDeleteAnalysisDirectory;
 import org.watto.task.Task_Popup_PromptToSaveBeforeClose;
 import org.watto.task.Task_Popup_WelcomeWizard;
@@ -494,6 +496,8 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
         //sidePanelHolder.reloadPanel();
       }
     }
+
+    ge.javafxCheck();
 
     ge.showWelcomeWizard();
   }
@@ -1309,7 +1313,7 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
         popupTask.setDirection(Task.DIRECTION_REDO);
         new Thread(popupTask).start();
         //SwingUtilities.invokeLater(popupTask);
-    }
+      }
   }
 
   /**
@@ -1332,6 +1336,35 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
     // reverse the order of the program title
     setTitle(StringConverter.reverse(getTitle()));
 
+  }
+
+  /**
+  **********************************************************************************************
+  Check if we can load the Javafx libraries. If not, show a popup to the user, asking them to
+  download the javafx version of Game Extractor
+  **********************************************************************************************
+  **/
+  public void javafxCheck() {
+
+
+    try {
+      new javafx.embed.swing.JFXPanel();
+    }
+    catch (Throwable t) {
+      if (!Settings.getBoolean("JavaFXPopupHasBeenShown")) {
+
+        // IMPORTANT, so that it doesn't mess with the loading of the File List
+        Settings.set("JavaFXPopupHasBeenShown", true);
+
+        Task_Popup_JavaFXMissing popupTask = new Task_Popup_JavaFXMissing();
+        popupTask.setDirection(Task.DIRECTION_REDO);
+        new Thread(popupTask).start();
+      }
+      else {
+        // IMPORTANT, so that it doesn't mess with the loading of the File List
+        Settings.set("JavaFXPopupHasBeenShown", true);
+      }
+    }
   }
 
 }

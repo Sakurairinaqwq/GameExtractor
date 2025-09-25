@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2022 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -17,6 +17,7 @@ package org.watto.ge.plugin.archive;
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
+
 import org.watto.ErrorLogger;
 import org.watto.Language;
 import org.watto.Settings;
@@ -54,7 +55,7 @@ public class Plugin_REZ_REZMGR extends ArchivePlugin {
   **/
   public Plugin_REZ_REZMGR() {
 
-    super("REZ_REZMGR", "Monolith Studios REZ");
+    super("REZ_REZMGR", "Monolith Studios REZ [REZ_REZMGR]");
 
     //         read write replace rename
     setProperties(true, false, true, false);
@@ -70,8 +71,8 @@ public class Plugin_REZ_REZMGR extends ArchivePlugin {
         "KISS Psycho Circus: The Nightmare Child",
         "Marine Sharpshooter",
         "Marine Sharpshooter 2: Jungle Warfare",
-        "Noone Lives Forever",
-        "Noone Lives Forever 2",
+        "The Operative: No One Lives Forever",
+        "No One Lives Forever 2: A Spy in H.A.R.M.'s Way",
         "Purge",
         "Sanity Aiken's Artifact",
         "Sentinel",

@@ -316,6 +316,7 @@ public class ImageManipulator {
       convertToPaletted();
     }
     ColorConverter.changeColorCountRGBSingleAlpha(this, numColors);
+    changeColorCount(numColors); // ensure the palette is the correct size, in case the conversion took too many colors away
   }
 
   /**
@@ -340,6 +341,9 @@ public class ImageManipulator {
       convertToPaletted();
     }
     ColorConverter.changeColorCountRGBKeepingExistingAlpha(this, numColors);
+
+    // the above method removed the paletted, so we need to make it paletted again, and ensure the number of colors it right (enlarge if too small)
+    changeColorCount(numColors);
   }
 
   /**

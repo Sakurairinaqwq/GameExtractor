@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2021 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,6 +15,9 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
+import org.watto.Language;
+import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -38,16 +41,14 @@ public class Plugin_RGB extends ArchivePlugin {
     super("RGB", "RGB");
 
     //         read write replace rename
-    setProperties(true, false, false, false);
+    setProperties(true, true, false, false);
 
-    setGames("Arsenal Extended Power");
+    setGames("A.R.S.E.N.A.L Extended Power");
     setExtensions("rgb"); // MUST BE LOWER CASE
     setPlatforms("PC");
 
     // MUST BE LOWER CASE !!!
-    //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
-    //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
-    //             );
+    setFileTypes(new FileType("rgbrle", "Texture Image", FileType.TYPE_IMAGE));
 
     //setTextPreviewExtensions("colours", "rat", "screen", "styles"); // LOWER CASE
 
@@ -148,6 +149,43 @@ public class Plugin_RGB extends ArchivePlugin {
     catch (Throwable t) {
       logError(t);
       return null;
+    }
+  }
+
+  /**
+   **********************************************************************************************
+   * Writes an [archive] File with the contents of the Resources
+   **********************************************************************************************
+   **/
+  @Override
+  public void write(Resource[] resources, File path) {
+    try {
+
+      FileManipulator fm = new FileManipulator(path, true);
+      int numFiles = resources.length;
+      TaskProgressManager.setMaximum(numFiles);
+
+      // 4 - Number Of Files
+      fm.writeInt(numFiles);
+
+      // Write Files and Directory
+      TaskProgressManager.setMessage(Language.get("Progress_WritingFiles"));
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+        long decompLength = resource.getDecompressedLength();
+
+        // 4 - File Length
+        fm.writeInt((int) decompLength);
+
+        // X - File Data
+        write(resource, fm);
+      }
+
+      fm.close();
+
+    }
+    catch (Throwable t) {
+      logError(t);
     }
   }
 

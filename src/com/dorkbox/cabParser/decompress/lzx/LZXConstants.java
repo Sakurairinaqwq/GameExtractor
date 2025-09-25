@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.dorkbox.cabParser.decompress.lzx;
 
 public interface LZXConstants {
-
   public static final int PRETREE_NUM_ELEMENTS = 20;
   public static final int NUM_CHARS = 256;
 

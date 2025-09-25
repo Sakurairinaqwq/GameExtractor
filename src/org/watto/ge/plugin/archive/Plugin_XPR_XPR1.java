@@ -144,7 +144,6 @@ public class Plugin_XPR_XPR1 extends ArchivePlugin {
       fm.seek(firstDataEntryOffset);
 
       // Loop through directory
-      int[] powers = new int[] { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096 };
       for (int i = 0; i < numFiles; i++) {
         // 2 - Unknown (1)
         // 2 - Unknown (4)
@@ -155,13 +154,69 @@ public class Plugin_XPR_XPR1 extends ArchivePlugin {
         FieldValidator.checkOffset(offset, arcSize);
 
         // 4 - Flags
-        fm.skip(2);
+        //   4 bits - dma
+        //   4 bits - dimensions // Is this a 1D, 2D, or 3D texture
+        //   8 bits - format     // The format of the texture data (see the table below)
+        //   4 bits - levels     // Number of mipmap levels
+        //   4 bits - width      // Width of the texture in the following format: actual_width = (1 << width)
+        //   4 bits - height     // Height of the texture in the following format: actual_height = (1 << height)
+        //   4 bits - depth      // Depth of the texture (for 3D textures) in the following format: actual_depth = (1 << depth)
+        fm.skip(1);
 
-        int width = powers[(ByteConverter.unsign(fm.readByte()) >> 4)];
-        int height = powers[(ByteConverter.unsign(fm.readByte()) & 15)];
+        int imageFormat = ByteConverter.unsign(fm.readByte());
 
-        // 4 - Unknown
+        int byte3 = ByteConverter.unsign(fm.readByte());
+        int width = 1 << ((byte3 >> 4) & 15);
+        int numMipmaps = (byte3 & 15);
+
+        int byte4 = ByteConverter.unsign(fm.readByte());
+        int height = 1 << (byte4 & 15);
+
+        // 4 - Alternate Size (if the image isn't a power of 2)
         fm.skip(4);
+
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5       0x02  2
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5       0x03  3
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4       0x04  4
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5         0x05  5
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8       0x06  6
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8       0x07  7
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8    0x0B  11
+        // NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5   0x0C  12
+        // NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8  0x0E  14
+        // NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8  0x0F  15
+        // NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5   0x11  17
+        // NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8 0x12  18
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8             0x19  25
+        // NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8 0x1E  30
+        // NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED 0x30  48
+        // NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8       0x3A  58
+        // NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8 0x3F  63
+        String imageFormatString = null;
+        if (imageFormat == 2) {
+          imageFormatString = "ARGB1555";
+        }
+        else if (imageFormat == 4) {
+          imageFormatString = "ARGB4444";
+        }
+        else if (imageFormat == 5) {
+          imageFormatString = "RGB565";
+        }
+        else if (imageFormat == 6) {
+          imageFormatString = "ARGB";
+        }
+        else if (imageFormat == 12) {
+          imageFormatString = "DXT1";
+        }
+        else if (imageFormat == 14) {
+          imageFormatString = "DXT3";
+        }
+        else if (imageFormat == 15) {
+          imageFormatString = "DXT5";
+        }
+        else {
+          imageFormatString = "" + imageFormat;
+        }
 
         String filename = names[i];
 
@@ -171,6 +226,8 @@ public class Plugin_XPR_XPR1 extends ArchivePlugin {
         Resource resource = new Resource(path, filename, offset);
         resource.addProperty("Width", width);
         resource.addProperty("Height", height);
+        resource.addProperty("ImageFormat", imageFormatString);
+        resource.addProperty("MipmapCount", numMipmaps);
         resources[i] = resource;
 
         TaskProgressManager.setValue(i);

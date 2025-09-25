@@ -25,6 +25,7 @@ import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
 import org.watto.ge.plugin.archive.Plugin_LOC;
 import org.watto.io.FileManipulator;
+import org.watto.io.FilenameSplitter;
 
 /**
 **********************************************************************************************
@@ -109,6 +110,8 @@ public class Viewer_LOC_LANG extends ViewerPlugin {
     }
   }
 
+  String codepage = null;
+
   /**
   **********************************************************************************************
   Reads a resource from the FileManipulator, and generates a PreviewPanel for it. The FileManipulator
@@ -143,13 +146,97 @@ public class Viewer_LOC_LANG extends ViewerPlugin {
         offsets[k] = offset;
       }
 
+      // Lang 1 = Russian (Windows-1251) (or English)
+      // Lang 2 = French (Windows-1252)
+      // Lang 3 = German (Windows-1250)
+      // Lang 4 = Spanish (Windows-1252)
+      // Lang 5 = Italian (Windows-1252)
+      // Lang 6 = English
+      // Lang 7 and 8 = buggy ones, half-half
+
+      boolean cyrillicCheck = true;
+      boolean isCyrillic = false;
+      codepage = null;
+
+      try {
+        String filename = FilenameSplitter.getFilename(fm.getFile().getName());
+        int fileNumber = Integer.parseInt(filename.substring(filename.length() - 1));
+
+        if (fileNumber == 1) {
+          // need to detect if it's Engligh or Russian
+          cyrillicCheck = true;
+          isCyrillic = false;
+          codepage = "Windows-1251";
+        }
+        else {
+          cyrillicCheck = false;
+
+          if (fileNumber >= 6) {
+            // English
+            isCyrillic = false;
+          }
+          else {
+            isCyrillic = true;
+
+            if (fileNumber == 2 || fileNumber == 4 || fileNumber == 5) {
+              codepage = "Windows-1252"; // French, Spanish, Italian
+            }
+            else if (fileNumber == 3) {
+              codepage = "Windows-1250"; // German
+            }
+          }
+        }
+      }
+      catch (Throwable t) {
+      }
+
       Object[][] data = new Object[numKeys][3];
       for (int k = 0; k < numKeys; k++) {
         fm.relativeSeek(offsets[k]);
 
+        /*
         // X - String (unicode)
         // 2 - null Unicode String Terminator
         String text = fm.readNullUnicodeString();
+        
+        byte[] textBytes = text.getBytes();
+        text = new String(textBytes, "Windows-1251"); // Russian
+        */
+        byte[] textBytes = new byte[512]; // guess max
+        byte[] charBytes = fm.readBytes(2);
+        int arrayPos = 0;
+        while (!(charBytes[0] == 0 && charBytes[1] == 0)) {
+          textBytes[arrayPos] = charBytes[0];
+          arrayPos++;
+          charBytes = fm.readBytes(2);
+        }
+        byte[] textBytesSmall = new byte[arrayPos];
+        System.arraycopy(textBytes, 0, textBytesSmall, 0, arrayPos);
+
+        if (cyrillicCheck) {
+          // first text string - detect possible cyrillic codepage
+          int numCyrillic = 0;
+          for (int a = 0; a < arrayPos; a++) {
+            if (textBytesSmall[a] < 0) {
+              numCyrillic++;
+            }
+          }
+
+          if (arrayPos - numCyrillic < 2) {
+            // probably cyrillic, as most characters are outside of ascii range
+            isCyrillic = true;
+          }
+
+          cyrillicCheck = false;
+        }
+
+        String text;
+        if (isCyrillic) {
+          text = new String(textBytesSmall, codepage);
+        }
+        else {
+          text = new String(textBytesSmall);
+        }
 
         int hash = hashes[k];
 
@@ -228,7 +315,17 @@ public class Viewer_LOC_LANG extends ViewerPlugin {
 
         // X - String (unicode)
         String text = (String) currentRow[2];
-        fm.writeUnicodeString(text);
+        if (codepage == null) {
+          fm.writeUnicodeString(text);
+        }
+        else {
+          byte[] textBytes = text.getBytes(codepage);
+          int textLength = textBytes.length;
+          for (int t = 0; t < textLength; t++) {
+            fm.writeByte(textBytes[t]);
+            fm.writeByte(0);
+          }
+        }
 
         // 2 - null Unicode String Terminator
         fm.writeByte(0);
@@ -340,6 +437,14 @@ public class Viewer_LOC_LANG extends ViewerPlugin {
         // X - String (unicode)
         String text = (String) currentRow[2];
         fm.writeUnicodeString(text);
+        /*
+        byte[] textBytes = text.getBytes(codepage);
+        int textLength = textBytes.length;
+        for (int t = 0; t < textLength; t++) {
+          fm.writeByte(textBytes[t]);
+          fm.writeByte(0);
+        }
+        */
 
         // 2 - null Unicode String Terminator
         fm.writeByte(0);

@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2022 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.viewer;
 
 import java.awt.Image;
+
 import org.watto.ErrorLogger;
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_Image;
@@ -29,6 +30,7 @@ import org.watto.ge.helper.PaletteGenerator;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
+import org.watto.ge.plugin.archive.Plugin_REZ;
 import org.watto.ge.plugin.archive.Plugin_REZ_REZMGR;
 import org.watto.io.FileManipulator;
 import org.watto.io.buffer.ByteBuffer;
@@ -95,7 +97,7 @@ public class Viewer_REZ_REZMGR_DTX extends ViewerPlugin {
       int rating = 0;
 
       ArchivePlugin plugin = Archive.getReadPlugin();
-      if (plugin instanceof Plugin_REZ_REZMGR) {
+      if (plugin instanceof Plugin_REZ_REZMGR || plugin instanceof Plugin_REZ) {
         rating += 50;
       }
       else if (!(plugin instanceof AllFilesPlugin)) {
@@ -217,32 +219,46 @@ public class Viewer_REZ_REZMGR_DTX extends ViewerPlugin {
 
         // 1 - Image Format (3=RGBA, 4=DXT1, 6=DXT5)
         int imageType = ByteConverter.unsign(fm.readByte());
-        if (imageType == 0) {
-          if (imageVersion == -5) {
-            imageFormat = "RGBA";
+
+        if (Archive.getReadPlugin() instanceof Plugin_REZ) {
+          // PS2
+          if (imageType == 3) {
+            imageFormat = "BGRA";
           }
-          else if (imageVersion == -2 || imageVersion == -3) {
-            imageFormat = "8bitPaletted";
+          else if (imageType == 7) {
+            imageFormat = "8bitPaletted_PS2";
           }
-        }
-        else if (imageType == 3) {
-          imageFormat = "RGBA";
-        }
-        else if (imageType == 4) {
-          imageFormat = "DXT1";
-        }
-        else if (imageType == 5) {
-          imageFormat = "DXT3";
-        }
-        else if (imageType == 6) {
-          imageFormat = "DXT3"; // think it's actually DXT3 (some as DXT5 are just all blank)
-        }
-        else if (imageType == 136 || imageType == 236) {
-          imageFormat = "8bitPaletted";
+
         }
         else {
-          ErrorLogger.log("REZ_REZMGR_DTX: Unknown Image Type: " + imageType);
-          return null;
+          // PC
+          if (imageType == 0) {
+            if (imageVersion == -5) {
+              imageFormat = "RGBA";
+            }
+            else if (imageVersion == -2 || imageVersion == -3) {
+              imageFormat = "8bitPaletted";
+            }
+          }
+          else if (imageType == 3) {
+            imageFormat = "RGBA";
+          }
+          else if (imageType == 4) {
+            imageFormat = "DXT1";
+          }
+          else if (imageType == 5) {
+            imageFormat = "DXT3";
+          }
+          else if (imageType == 6) {
+            imageFormat = "DXT3"; // think it's actually DXT3 (some as DXT5 are just all blank)
+          }
+          else if (imageType == 136 || imageType == 236) {
+            imageFormat = "8bitPaletted";
+          }
+          else {
+            ErrorLogger.log("REZ_REZMGR_DTX: Unknown Image Type: " + imageType);
+            return null;
+          }
         }
       }
 
@@ -295,6 +311,41 @@ public class Viewer_REZ_REZMGR_DTX extends ViewerPlugin {
         imageResource = new ImageResource(pixels, width, height);
 
       }
+      else if (imageFormat.equals("8bitPaletted_PS2")) {
+        fm.seek(164);
+
+        // X - Color Palette Indexes
+        int numPixels = width * height;
+        byte[] pixelBytes = fm.readBytes(numPixels);
+
+        fm.seek(fm.getLength() - 1024); // palette at the end of the file
+
+        // X - Color Palette (BGRA)
+        int numColors = 256;
+        int[] palette = new int[numColors];
+
+        for (int i = 0; i < numColors; i++) {
+          // 1 - Blue
+          // 1 - Green
+          // 1 - Red 
+          // 1 - Alpha
+          int b = ByteConverter.unsign(fm.readByte());
+          int g = ByteConverter.unsign(fm.readByte());
+          int r = ByteConverter.unsign(fm.readByte());
+          int a = ByteConverter.unsign(fm.readByte()) * 2; // double alpha for PS2
+          palette[i] = (a << 24 | r << 16 | g << 8 | b);
+        }
+
+        int[] pixels = new int[numPixels];
+
+        for (int i = 0; i < numPixels; i++) {
+          pixels[i] = palette[ByteConverter.unsign(pixelBytes[i])];
+        }
+
+        imageResource = new ImageResource(pixels, width, height);
+        imageResource = ImageFormatReader.removeAlphaIfAllInvisible(imageResource);
+
+      }
       else if (imageFormat.equals("Grayscale")) {
         int[] palette = PaletteGenerator.getGrayscale();
 
@@ -320,6 +371,10 @@ public class Viewer_REZ_REZMGR_DTX extends ViewerPlugin {
         }
         else if (imageFormat.equals("RGBA")) {
           imageResource = ImageFormatReader.readRGBA(fm, width, height);
+          imageResource = ImageFormatReader.removeAlphaIfAllInvisible(imageResource);
+        }
+        else if (imageFormat.equals("BGRA")) {
+          imageResource = ImageFormatReader.readBGRA(fm, width, height);
           imageResource = ImageFormatReader.removeAlphaIfAllInvisible(imageResource);
         }
         else if (imageFormat.equals("DXT1")) {

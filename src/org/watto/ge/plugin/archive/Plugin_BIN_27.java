@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.Language;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -121,10 +122,15 @@ public class Plugin_BIN_27 extends ArchivePlugin {
       TaskProgressManager.setMaximum(numFiles);
 
       // Loop through directory
+      int emptyCount = 0;
       for (int i = 0; i < numFiles; i++) {
         // 4 - File Length
         int length = fm.readInt();
         FieldValidator.checkLength(length, arcSize);
+
+        if (length == 0) {
+          emptyCount++;
+        }
 
         // X - File Data
         long offset = fm.getOffset();
@@ -136,6 +142,11 @@ public class Plugin_BIN_27 extends ArchivePlugin {
         resources[i] = new Resource(path, filename, offset, length);
 
         TaskProgressManager.setValue(i);
+      }
+
+      // if lots of the files are empty, probably not this type of archive
+      if (emptyCount >= 2) {
+        return null;
       }
 
       fm.close();

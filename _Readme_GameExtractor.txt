@@ -116,6 +116,11 @@ website as well.
 //                                                                                            //
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+Version 3.16.0002
+[I] Small incremental version, with the intention of primarily adding more supported games.
+[A] Have now added JavaFX libraries and a separate executable, for running on PCs with Java 11+
+[B] DXT3 images now display with their alpha channel
+
 Version 3.16.0001
 [I] Small incremental version, with the intention of primarily adding more supported games.
 [A] Previews are cleaned up before opening the new preview, to reduce memory usage

@@ -158,7 +158,23 @@ public class Plugin_LOC extends ArchivePlugin {
         TaskProgressManager.setValue(i);
       }
 
-      calculateFileSizes(resources, arcSize);
+      // Now, because some of the international versions of the game don't have all the offsets written correctly, we need to check and fix them here...
+      fm.getBuffer().setBufferSize(4);
+      long offset = resources[0].getOffset();
+      for (int i = 0; i < numFiles; i++) {
+        fm.seek(offset);
+        int length = fm.readInt() + 4;
+
+        Resource resource = resources[i];
+        resource.setLength(length);
+        resource.setDecompressedLength(length);
+        resource.setOffset(offset);
+
+        offset += length;
+
+      }
+
+      //calculateFileSizes(resources, arcSize);
 
       fm.close();
 

@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -154,9 +155,11 @@ public class Plugin_DAT_80 extends ArchivePlugin {
 
         // 2 - Channels (2)
         short channels = fm.readShort();
+        FieldValidator.checkRange(channels, 1, 32);
 
         // 2 - Bitrate (16)
         short bitrate = fm.readShort();
+        FieldValidator.checkRange(bitrate, 1, 64);
 
         // 4 - null
         // 4 - Unknown

@@ -213,6 +213,7 @@ public class StringHelper {
       buffer.read(charBytes);
       filenameChar = CharConverter.convertLittle(charBytes);
     }
+
     return filename;
   }
 

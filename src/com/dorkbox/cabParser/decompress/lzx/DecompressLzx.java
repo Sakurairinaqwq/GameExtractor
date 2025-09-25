@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.dorkbox.cabParser.decompress.lzx;
 
-import com.dorkbox.cabParser.structure.CabException;
-import com.dorkbox.cabParser.structure.CorruptCabException;
+import com.dorkbox.cabParser.CabException;
+import com.dorkbox.cabParser.CorruptCabException;
+import com.dorkbox.cabParser.decompress.Decompressor;
 
 public final class DecompressLzx implements Decompressor, LZXConstants {
-
   private int[] extraBits = new int[51];
   private int[] positionBase = new int[51];
 
@@ -61,8 +60,6 @@ public final class DecompressLzx implements Decompressor, LZXConstants {
   private int intelFileSize;
   private int intelCursorPos;
 
-  private byte[] savedBytes = new byte[6];
-
   private boolean intelStarted;
   private int framesRead;
 
@@ -91,160 +88,11 @@ public final class DecompressLzx implements Decompressor, LZXConstants {
     this.windowSize = -1;
   }
 
-  private void alignedAlgo(int this_run) throws CorruptCabException {
-    int windowPos = this.windowPosition;
-    int mask = this.windowMask;
-    byte[] window = this.localWindow;
-    int r0 = this.R0;
-    int r1 = this.R1;
-    int r2 = this.R2;
-
-    while (this_run > 0) {
-      int mainElement = this.mainTree.decodeElement();
-
-      if (mainElement < NUM_CHARS) {
-        window[windowPos] = (byte) mainElement;
-        windowPos = windowPos + 1 & mask;
-        this_run--;
-      }
-      /* is a match */
-      else {
-        mainElement -= NUM_CHARS;
-
-        int matchLength = mainElement & NUM_PRIMARY_LENGTHS;
-        if (matchLength == NUM_PRIMARY_LENGTHS) {
-          matchLength += this.lengthTree.decodeElement();
-        }
-
-        int match_offset = mainElement >>> 3;
-
-        if (match_offset > 2) {
-          // not repeated offset
-          int extra = this.extraBits[match_offset];
-          match_offset = this.positionBase[match_offset];
-
-          if (extra > 3) {
-            // verbatim and aligned bits
-            match_offset += (readBits(extra - 3) << 3) + this.alignedTree.decodeElement();
-          }
-          else if (extra == 3) {
-            // aligned bits only
-            match_offset += this.alignedTree.decodeElement();
-          }
-          else if (extra > 0) {
-            // verbatim bits only
-            match_offset += readBits(extra);
-          }
-          else {
-            match_offset = 1;
-          }
-
-          // update repeated offset LRU queue
-          r2 = r1;
-          r1 = r0;
-          r0 = match_offset;
-        }
-        else if (match_offset == 0) {
-          match_offset = r0;
-        }
-        else if (match_offset == 1) {
-          match_offset = r1;
-          r1 = r0;
-          r0 = match_offset;
-        }
-        else {
-          match_offset = r2;
-          r2 = r0;
-          r0 = match_offset;
-        }
-
-        matchLength += MIN_MATCH;
-        this_run -= matchLength;
-
-        while (matchLength > 0) {
-          window[windowPos] = window[windowPos - match_offset & mask];
-          windowPos = windowPos + 1 & mask;
-          matchLength--;
-        }
-      }
-    }
-
-    if (this_run != 0) {
-      throw new CorruptCabException();
-    }
-
-    this.R0 = r0;
-    this.R1 = r1;
-    this.R2 = r2;
-    this.windowPosition = windowPos;
-  }
-
-  private void decodeIntelBlock(byte[] bytes, int outLength) {
-    if (outLength <= 6 || !this.intelStarted) {
-      this.intelCursorPos += outLength;
-      return;
-    }
-
-    int cursorPos = this.intelCursorPos;
-    int fileSize = this.intelFileSize;
-    int abs_off = 0;
-
-    int adjustedOutLength = outLength - 6;
-
-    // save bytes
-    while (abs_off < 6) {
-      this.savedBytes[abs_off] = bytes[adjustedOutLength + abs_off];
-      bytes[adjustedOutLength + abs_off] = (byte) -24;
-      abs_off++;
-    }
-
-    int dataIndex = 0;
-    int cursor_pos = cursorPos + adjustedOutLength;
-
-    while (cursorPos < cursor_pos) {
-      while (bytes[dataIndex++] == -24) {
-        if (cursorPos >= cursor_pos) {
-          break;
-        }
-
-        abs_off = bytes[dataIndex] & 0xFF |
-            (bytes[dataIndex + 1] & 0xFF) << 8 |
-            (bytes[dataIndex + 2] & 0xFF) << 16 |
-            (bytes[dataIndex + 3] & 0xFF) << 24;
-
-        if (abs_off >= 0) {
-          if (abs_off < fileSize) {
-            int rel_off = abs_off - cursorPos;
-
-            bytes[dataIndex] = (byte) (rel_off & 0xFF);
-            bytes[dataIndex + 1] = (byte) (rel_off >>> 8 & 0xFF);
-            bytes[dataIndex + 2] = (byte) (rel_off >>> 16 & 0xFF);
-            bytes[dataIndex + 3] = (byte) (rel_off >>> 24);
-          }
-        }
-        else if (abs_off >= -cursorPos) {
-          int rel_off = abs_off + this.intelFileSize;
-
-          bytes[dataIndex] = (byte) (rel_off & 0xFF);
-          bytes[dataIndex + 1] = (byte) (rel_off >>> 8 & 0xFF);
-          bytes[dataIndex + 2] = (byte) (rel_off >>> 16 & 0xFF);
-          bytes[dataIndex + 3] = (byte) (rel_off >>> 24);
-        }
-
-        dataIndex += 4;
-        cursorPos += 5;
-      }
-      cursorPos++;
-    }
-
-    this.intelCursorPos = cursor_pos + 6;
-
-    // restore saved bytes
-    abs_off = 0;
-    while (abs_off < 6) {
-      bytes[adjustedOutLength + abs_off] = this.savedBytes[abs_off];
-      abs_off++;
-    }
+  @Override
+  public void init(int windowBits) throws CabException {
+    this.wndSize = 1 << windowBits;
+    this.windowMask = this.wndSize - 1;
+    reset(windowBits);
   }
 
   @Override
@@ -264,26 +112,40 @@ public final class DecompressLzx implements Decompressor, LZXConstants {
     }
   }
 
-  private void decompressBlockActions(int bytesToRead) throws CabException {
-    this.windowPosition &= this.windowMask;
+  @Override
+  public int getMaxGrowth() {
+    return MAX_GROWTH;
+  }
 
-    if (this.windowPosition + bytesToRead > this.wndSize) {
-      throw new CabException();
+  @Override
+  public void reset(int windowBits) throws CabException {
+    if (this.windowSize == windowBits) {
+      this.mainTree.reset();
+      this.lengthTree.reset();
+      this.alignedTree.reset();
+    }
+    else {
+      maybeReset();
+      int i = NUM_CHARS + this.mainElements * ALIGNED_NUM_ELEMENTS;
+      this.localWindow = new byte[this.wndSize + 261];
+
+      this.preTree = new DecompressLzxTree(PRETREE_NUM_ELEMENTS, ALIGNED_NUM_ELEMENTS, this, null);
+      this.mainTree = new DecompressLzxTree(i, 9, this, this.preTree);
+      this.lengthTree = new DecompressLzxTree(SECONDARY_NUM_ELEMENTS, 6, this, this.preTree);
+      this.alignedTree = new DecompressLzxTree(ALIGNED_NUM_ELEMENTS, NUM_PRIMARY_LENGTHS, this, this.preTree);
     }
 
-    switch (this.blockType) {
-      case BLOCKTYPE_UNCOMPRESSED:
-        uncompressedAlgo(bytesToRead);
-        return;
-      case BLOCKTYPE_ALIGNED:
-        alignedAlgo(bytesToRead);
-        return;
-      case BLOCKTYPE_VERBATIM:
-        verbatimAlgo(bytesToRead);
-        return;
-      default:
-        throw new CorruptCabException();
-    }
+    this.windowSize = windowBits;
+    this.R0 = this.R1 = this.R2 = 1;
+
+    this.blocksRemaining = 0;
+    this.windowPosition = 0;
+    this.intelCursorPos = 0;
+
+    this.readHeader = true;
+    this.intelStarted = false;
+    this.framesRead = 0;
+    this.blockType = BLOCKTYPE_INVALID;
   }
 
   private int decompressLoop(int bytesToRead) throws CabException {
@@ -405,16 +267,79 @@ public final class DecompressLzx implements Decompressor, LZXConstants {
     return lastWindowPosition;
   }
 
-  @Override
-  public int getMaxGrowth() {
-    return MAX_GROWTH;
+  private void decodeIntelBlock(byte[] bytes, int outLength) {
+    if (outLength <= 10 || !this.intelStarted) {
+      this.intelCursorPos += outLength;
+      return;
+    }
+
+    int cursorPos = this.intelCursorPos;
+    int fileSize = this.intelFileSize;
+    int abs_off = 0;
+
+    int adjustedOutLength = outLength - 10;
+
+    int dataIndex = 0;
+    int cursor_pos = cursorPos + adjustedOutLength;
+
+    while (cursorPos < cursor_pos) {
+      while (bytes[dataIndex++] == -24) {
+        if (cursorPos >= cursor_pos) {
+          break;
+        }
+
+        abs_off = bytes[dataIndex] & 0xFF |
+            (bytes[dataIndex + 1] & 0xFF) << 8 |
+            (bytes[dataIndex + 2] & 0xFF) << 16 |
+            (bytes[dataIndex + 3] & 0xFF) << 24;
+
+        if ((abs_off >= -cursorPos) && (abs_off < fileSize)) {
+          int rel_off = (abs_off >= 0) ? abs_off - cursorPos : abs_off + fileSize;
+          bytes[dataIndex] = (byte) (rel_off & 0xFF);
+          bytes[dataIndex + 1] = (byte) (rel_off >>> 8 & 0xFF);
+          bytes[dataIndex + 2] = (byte) (rel_off >>> 16 & 0xFF);
+          bytes[dataIndex + 3] = (byte) (rel_off >>> 24 & 0xFF);
+        }
+
+        dataIndex += 4;
+        cursorPos += 5;
+      }
+      cursorPos++;
+    }
+
+    this.intelCursorPos += outLength;
   }
 
-  @Override
-  public void init(int windowBits) throws CabException {
-    this.wndSize = 1 << windowBits;
-    this.windowMask = this.wndSize - 1;
-    reset(windowBits);
+  private void decompressBlockActions(int bytesToRead) throws CabException {
+    this.windowPosition &= this.windowMask;
+
+    if (this.windowPosition + bytesToRead > this.wndSize) {
+      throw new CabException();
+    }
+
+    switch (this.blockType) {
+    case BLOCKTYPE_UNCOMPRESSED:
+      uncompressedAlgo(bytesToRead);
+      return;
+    case BLOCKTYPE_ALIGNED:
+      alignedAlgo(bytesToRead);
+      return;
+    case BLOCKTYPE_VERBATIM:
+      verbatimAlgo(bytesToRead);
+      return;
+    default:
+      throw new CorruptCabException();
+    }
+  }
+
+  void readNumberBits(int numBits) {
+    this.bitsLeft <<= numBits;
+    this.blockAlignOffset -= numBits;
+
+    if (this.blockAlignOffset <= 0) {
+      this.bitsLeft |= readShort() << -this.blockAlignOffset;
+      this.blockAlignOffset += 16;
+    }
   }
 
   private void initBitStream() {
@@ -432,86 +357,6 @@ public final class DecompressLzx implements Decompressor, LZXConstants {
       this.mainElements++;
     }
     while (i < this.wndSize);
-  }
-
-  int readBits(int numBitsToRead) {
-    int i = this.bitsLeft >>> 32 - numBitsToRead;
-    readNumberBits(numBitsToRead);
-    return i;
-  }
-
-  private int readInt() {
-    int i = this.inputBytes[this.index] & 0xFF |
-        (this.inputBytes[this.index + 1] & 0xFF) << 8 |
-        (this.inputBytes[this.index + 2] & 0xFF) << 16 |
-        (this.inputBytes[this.index + 3] & 0xFF) << 24;
-    this.index += 4;
-
-    return i;
-  }
-
-  void readNumberBits(int numBits) {
-    this.bitsLeft <<= numBits;
-    this.blockAlignOffset -= numBits;
-
-    if (this.blockAlignOffset <= 0) {
-      this.bitsLeft |= readShort() << -this.blockAlignOffset;
-      this.blockAlignOffset += 16;
-    }
-  }
-
-  private int readShort() {
-    if (this.index < this.length) {
-      int i = this.inputBytes[this.index] & 0xFF | (this.inputBytes[this.index + 1] & 0xFF) << 8;
-      this.index += 2;
-      return i;
-    }
-
-    this.abort = true;
-    this.index = 0;
-    return 0;
-  }
-
-  @Override
-  public void reset(int windowBits) throws CabException {
-    if (this.windowSize == windowBits) {
-      this.mainTree.reset();
-      this.lengthTree.reset();
-      this.alignedTree.reset();
-    }
-    else {
-      maybeReset();
-      int i = NUM_CHARS + this.mainElements * ALIGNED_NUM_ELEMENTS;
-      this.localWindow = new byte[this.wndSize + 261];
-
-      this.preTree = new DecompressLzxTree(PRETREE_NUM_ELEMENTS, ALIGNED_NUM_ELEMENTS, this, null);
-      this.mainTree = new DecompressLzxTree(i, 9, this, this.preTree);
-      this.lengthTree = new DecompressLzxTree(SECONDARY_NUM_ELEMENTS, 6, this, this.preTree);
-      this.alignedTree = new DecompressLzxTree(ALIGNED_NUM_ELEMENTS, NUM_PRIMARY_LENGTHS, this, this.preTree);
-    }
-
-    this.windowSize = windowBits;
-    this.R0 = this.R1 = this.R2 = 1;
-
-    this.blocksRemaining = 0;
-    this.windowPosition = 0;
-    this.intelCursorPos = 0;
-
-    this.readHeader = true;
-    this.intelStarted = false;
-    this.framesRead = 0;
-    this.blockType = BLOCKTYPE_INVALID;
-  }
-
-  private void uncompressedAlgo(int length) throws CorruptCabException {
-    if (this.index + length > this.length || this.windowPosition + length > this.wndSize) {
-      throw new CorruptCabException();
-    }
-
-    this.intelStarted = true;
-    System.arraycopy(this.inputBytes, this.index, this.localWindow, this.windowPosition, length);
-    this.index += length;
-    this.windowPosition += length;
   }
 
   private void verbatimAlgo(int this_run) throws CorruptCabException {
@@ -609,6 +454,133 @@ public final class DecompressLzx implements Decompressor, LZXConstants {
         this.blockAlignOffset += 16;
       }
     }
+
+    return i;
+  }
+
+  private void alignedAlgo(int this_run) throws CorruptCabException {
+    int windowPos = this.windowPosition;
+    int mask = this.windowMask;
+    byte[] window = this.localWindow;
+    int r0 = this.R0;
+    int r1 = this.R1;
+    int r2 = this.R2;
+
+    while (this_run > 0) {
+      int mainElement = this.mainTree.decodeElement();
+
+      if (mainElement < NUM_CHARS) {
+        window[windowPos] = (byte) mainElement;
+        windowPos = windowPos + 1 & mask;
+        this_run--;
+      }
+      /* is a match */
+      else {
+        mainElement -= NUM_CHARS;
+
+        int matchLength = mainElement & NUM_PRIMARY_LENGTHS;
+        if (matchLength == NUM_PRIMARY_LENGTHS) {
+          matchLength += this.lengthTree.decodeElement();
+        }
+
+        int match_offset = mainElement >>> 3;
+
+        if (match_offset > 2) {
+          // not repeated offset
+          int extra = this.extraBits[match_offset];
+          match_offset = this.positionBase[match_offset];
+
+          if (extra > 3) {
+            // verbatim and aligned bits
+            match_offset += (readBits(extra - 3) << 3) + this.alignedTree.decodeElement();
+          }
+          else if (extra == 3) {
+            // aligned bits only
+            match_offset += this.alignedTree.decodeElement();
+          }
+          else if (extra > 0) {
+            // verbatim bits only
+            match_offset += readBits(extra);
+          }
+          else {
+            match_offset = 1;
+          }
+
+          // update repeated offset LRU queue
+          r2 = r1;
+          r1 = r0;
+          r0 = match_offset;
+        }
+        else if (match_offset == 0) {
+          match_offset = r0;
+        }
+        else if (match_offset == 1) {
+          match_offset = r1;
+          r1 = r0;
+          r0 = match_offset;
+        }
+        else {
+          match_offset = r2;
+          r2 = r0;
+          r0 = match_offset;
+        }
+
+        matchLength += MIN_MATCH;
+        this_run -= matchLength;
+
+        while (matchLength > 0) {
+          window[windowPos] = window[windowPos - match_offset & mask];
+          windowPos = windowPos + 1 & mask;
+          matchLength--;
+        }
+      }
+    }
+
+    if (this_run != 0) {
+      throw new CorruptCabException();
+    }
+
+    this.R0 = r0;
+    this.R1 = r1;
+    this.R2 = r2;
+    this.windowPosition = windowPos;
+  }
+
+  private int readShort() {
+    if (this.index < this.length) {
+      int i = this.inputBytes[this.index] & 0xFF | (this.inputBytes[this.index + 1] & 0xFF) << 8;
+      this.index += 2;
+      return i;
+    }
+
+    this.abort = true;
+    this.index = 0;
+    return 0;
+  }
+
+  int readBits(int numBitsToRead) {
+    int i = this.bitsLeft >>> 32 - numBitsToRead;
+    readNumberBits(numBitsToRead);
+    return i;
+  }
+
+  private void uncompressedAlgo(int length) throws CorruptCabException {
+    if (this.index + length > this.length || this.windowPosition + length > this.wndSize) {
+      throw new CorruptCabException();
+    }
+
+    this.intelStarted = true;
+    System.arraycopy(this.inputBytes, this.index, this.localWindow, this.windowPosition, length);
+    this.index += length;
+    this.windowPosition += length;
+  }
+
+  private int readInt() {
+    int i = this.inputBytes[this.index] & 0xFF |
+        (this.inputBytes[this.index + 1] & 0xFF) << 8 |
+        (this.inputBytes[this.index + 2] & 0xFF) << 16 |
+        (this.inputBytes[this.index + 3] & 0xFF) << 24;
+    this.index += 4;
 
     return i;
   }

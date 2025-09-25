@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -126,6 +127,10 @@ public class Plugin_DAT_66 extends ArchivePlugin {
       // 4 - Number of Files
       int numFiles = fm.readInt();
       FieldValidator.checkNumFiles(numFiles);
+
+      if (numFiles == 1) {
+        return null; // false positive
+      }
 
       // 4 - File Data Length
       fm.skip(4);

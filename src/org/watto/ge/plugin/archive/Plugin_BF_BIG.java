@@ -25,6 +25,7 @@ import org.watto.ge.plugin.exporter.BlockVariableExporterWrapper;
 import org.watto.ge.plugin.exporter.Exporter_Default;
 import org.watto.ge.plugin.exporter.Exporter_LZO_SingleBlock;
 import org.watto.io.FileManipulator;
+import org.watto.io.converter.IntConverter;
 import org.watto.task.TaskProgressManager;
 
 /**
@@ -151,14 +152,21 @@ public class Plugin_BF_BIG extends ArchivePlugin {
       int numFilesIncluding = fm.readInt();
       FieldValidator.checkNumFiles(numFilesIncluding / 5);
 
-      // 4 - Unknown (1)
+      // 4 - Number of Directory Blocks (1/2)
       // 4 - Unknown
       // 4 - Number Of Files (NOT including the empty padding entries)
       // 4 - Number Of Folders (NOT including the empty padding entries)
       // 4 - Header Length (68)
-      // 4 - Unknown (-1)
+      fm.skip(20);
+
+      // 4 - Directory Block 2 Offset (-1 if it all fits in 1 directory)
+      long dirBlock2Offset = fm.readInt();
+      if (dirBlock2Offset != -1) {
+        dirBlock2Offset = IntConverter.unsign((int) dirBlock2Offset);
+      }
+
       // 4 - null
-      fm.skip(28);
+      fm.skip(4);
 
       // 4 - Number of Folders (including the empty padding entries)
       int numFoldersIncluding = fm.readInt();
@@ -169,101 +177,128 @@ public class Plugin_BF_BIG extends ArchivePlugin {
       Resource[] resources = new Resource[numFiles];
       TaskProgressManager.setMaximum(numFiles);
 
-      // Read the Offsets Directory
-      int[] offsets = new int[numFiles];
-      for (int i = 0; i < numFiles; i++) {
-        // 4 - File Offset
-        int offset = fm.readInt() + 4; // +4 to skip the 4-byte header on each file
-        FieldValidator.checkOffset(offset, arcSize);
-        offsets[i] = offset;
-
-        // 2 - Unknown
-        // 2 - Unknown
-        fm.skip(4);
+      int numFilesInBlock = numFiles;
+      if (numFilesInBlock > numFilesIncluding) {
+        numFilesInBlock = numFilesIncluding;
       }
+      int numFilesRead = 0;
 
-      // skip the padding
-      int paddingSize = (numFilesIncluding - numFiles) * 8;
-      fm.skip(paddingSize);
+      String[] folderNames = null; // need to retain these for the second loop 
+      while (numFilesRead < numFiles) {
 
-      // Read the Filename Directory
-      int[] folderIDs = new int[numFiles];
-      for (int i = 0; i < numFiles; i++) {
-        // 4 - File Length
-        int length = fm.readInt();
-        FieldValidator.checkLength(length, arcSize);
+        // Read the Offsets Directory
+        long[] offsets = new long[numFilesInBlock];
+        for (int i = 0; i < numFilesInBlock; i++) {
+          // 4 - File Offset
+          long offset = IntConverter.unsign(fm.readInt()) + 4; // +4 to skip the 4-byte header on each file
+          FieldValidator.checkOffset(offset, arcSize);
+          offsets[i] = offset;
 
-        // 4 - File ID? (incremental from 1)
-        // 4 - Unknown
-        fm.skip(8);
-
-        // 4 - Parent Folder ID?
-        int parentID = fm.readInt();
-        folderIDs[i] = parentID;
-
-        // 4 - Hash?
-        fm.skip(4);
-
-        // 64 - Filename (null terminated)
-        String filename = fm.readNullString(64);
-
-        if (version == 42) {
-          // 4 - Unknown (3)
-          // 36 - Checksum String (null terminated, filled with nulls)
-          fm.skip(40);
+          // 2 - Unknown
+          // 2 - Unknown
+          fm.skip(4);
         }
 
-        int offset = offsets[i];
+        // skip the padding
+        int paddingSize = (numFilesIncluding - numFilesInBlock) * 8;
+        fm.skip(paddingSize);
 
-        //path,id,name,offset,length,decompLength,exporter
-        resources[i] = new Resource(path, filename, offset, length);
+        // Read the Filename Directory
+        int[] folderIDs = new int[numFilesInBlock];
+        for (int i = 0; i < numFilesInBlock; i++) {
+          // 4 - File Length
+          int length = fm.readInt();
+          FieldValidator.checkLength(length, arcSize);
 
-        TaskProgressManager.setValue(i);
-      }
+          // 4 - File ID? (incremental from 1)
+          // 4 - Unknown
+          fm.skip(8);
 
-      // skip the padding
-      if (version == 42) {
-        paddingSize = (numFilesIncluding - numFiles) * 124;
-      }
-      else {
-        paddingSize = (numFilesIncluding - numFiles) * 84;
-      }
-      fm.skip(paddingSize);
+          // 4 - Parent Folder ID?
+          int parentID = fm.readInt();
+          folderIDs[i] = parentID;
 
-      // Read the Folders Directory
-      String[] folderNames = new String[numFolders];
-      for (int i = 0; i < numFolders; i++) {
-        // 4 - Unknown
-        // 4 - Number of sub-folder entries under this Folder
-        // 4 - Unknown
-        // 4 - Unknown
-        fm.skip(16);
+          // 4 - Hash?
+          fm.skip(4);
 
-        // 4 - Parent Folder ID (-1 for no parent)
-        int parentID = fm.readInt();
+          // 64 - Filename (null terminated)
+          String filename = fm.readNullString(64);
 
-        // 64 - Folder Name (null terminated)
-        String folderName = fm.readNullString(64) + "\\";
-        if (parentID == -1) {
-          folderName = ""; // root
+          if (version == 42) {
+            // 4 - Unknown (3)
+            // 36 - Checksum String (null terminated, filled with nulls)
+            fm.skip(40);
+          }
+          else if (version == 36) {
+            // 4 - null
+            fm.skip(4);
+          }
+
+          long offset = offsets[i];
+
+          //path,id,name,offset,length,decompLength,exporter
+          resources[numFilesRead + i] = new Resource(path, filename, offset, length);
+
+          TaskProgressManager.setValue(i);
+        }
+
+        // skip the padding
+        if (version == 42) {
+          paddingSize = (numFilesIncluding - numFilesInBlock) * 124;
+        }
+        else if (version == 36) {
+          paddingSize = (numFilesIncluding - numFilesInBlock) * 88;
         }
         else {
-          folderName = folderNames[parentID] + folderName;
+          paddingSize = (numFilesIncluding - numFilesInBlock) * 84;
+        }
+        fm.skip(paddingSize);
+
+        // Read the Folders Directory
+        if (folderNames == null) {
+          // only read this in the first loop - the second loop can just use the names from the first loop (unless we somehow manage to have thousands of folders, which means we'd have to change this loop even more)
+          folderNames = new String[numFolders];
+          for (int i = 0; i < numFolders; i++) {
+            // 4 - Unknown
+            // 4 - Number of sub-folder entries under this Folder
+            // 4 - Unknown
+            // 4 - Unknown
+            fm.skip(16);
+
+            // 4 - Parent Folder ID (-1 for no parent)
+            int parentID = fm.readInt();
+
+            // 64 - Folder Name (null terminated)
+            String folderName = fm.readNullString(64) + "\\";
+            if (parentID == -1) {
+              folderName = ""; // root
+            }
+            else {
+              folderName = folderNames[parentID] + folderName;
+            }
+
+            folderNames[i] = folderName;
+          }
         }
 
-        folderNames[i] = folderName;
-      }
+        // Now set the folder names for each file
+        for (int i = 0; i < numFilesInBlock; i++) {
+          int parentID = folderIDs[i];
+          if (parentID != -1) {
+            Resource resource = resources[numFilesRead + i];
+            String name = folderNames[parentID] + resource.getName();
+            resource.setName(name);
+            resource.setOriginalName(name);
+          }
 
-      // Now set the folder names for each file
-      for (int i = 0; i < numFiles; i++) {
-        int parentID = folderIDs[i];
-        if (parentID != -1) {
-          Resource resource = resources[i];
-          String name = folderNames[parentID] + resource.getName();
-          resource.setName(name);
-          resource.setOriginalName(name);
         }
 
+        // get ready for the next block of data, if it exists
+        numFilesRead += numFilesInBlock;
+        numFilesInBlock = numFiles - numFilesRead;
+        if (numFilesInBlock > 0) {
+          fm.seek(dirBlock2Offset);
+        }
       }
 
       /*
@@ -295,14 +330,25 @@ public class Plugin_BF_BIG extends ArchivePlugin {
 
         // seek+skip, so the relativeSeek later is very quick
         fm.seek(offset);
-        fm.skip(13);
 
-        if (fm.readInt() == -285228903) {
+        if (resource.getExtension().equalsIgnoreCase("bin")) {
           // compressed
         }
         else {
-          // uncompressed
-          continue;
+          if (fm.readInt() == 512000) {
+            // compressed
+          }
+          else {
+            fm.skip(9);
+
+            if (fm.readInt() == -285228903) {
+              // compressed
+            }
+            else {
+              // uncompressed
+              continue;
+            }
+          }
         }
 
         fm.relativeSeek(offset);
@@ -322,7 +368,12 @@ public class Plugin_BF_BIG extends ArchivePlugin {
           FieldValidator.checkLength(blockDecompLength);
 
           if (blockDecompLength == 0) {
-            break; // padding at end of file
+            blockDecompLength = fm.readInt();
+            FieldValidator.checkLength(blockDecompLength);
+
+            if (blockDecompLength == 0) {
+              break; // padding at end of file
+            }
           }
 
           // 4 - Compressed Block Length
@@ -351,7 +402,7 @@ public class Plugin_BF_BIG extends ArchivePlugin {
           numBlocks++;
         }
 
-        // shink the arrays
+        // shrink the arrays
         long[] tempLongArray = blockOffsets;
         blockOffsets = new long[numBlocks];
         System.arraycopy(tempLongArray, 0, blockOffsets, 0, numBlocks);

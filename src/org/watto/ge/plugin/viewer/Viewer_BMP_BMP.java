@@ -19,11 +19,13 @@ import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.PixelGrabber;
 import java.io.File;
+
 import javax.imageio.stream.FileImageInputStream;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.MemoryCacheImageInputStream;
 import javax.imageio.stream.MemoryCacheImageOutputStream;
+
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_3DModel;
 import org.watto.component.PreviewPanel_Image;
@@ -34,6 +36,7 @@ import org.watto.io.FileManipulator;
 import org.watto.io.converter.ByteConverter;
 import org.watto.io.stream.ManipulatorInputStream;
 import org.watto.io.stream.ManipulatorOutputStream;
+
 import com.sun.imageio.plugins.bmp.BMPImageReader;
 import com.sun.imageio.plugins.bmp.BMPImageReaderSpi;
 import com.sun.imageio.plugins.bmp.BMPImageWriter;

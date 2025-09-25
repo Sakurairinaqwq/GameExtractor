@@ -19,7 +19,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import org.watto.ErrorLogger;
+import org.watto.Language;
 import org.watto.Settings;
+import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.UE4Helper;
@@ -35,6 +37,7 @@ import org.watto.io.FileManipulator;
 import org.watto.io.FilenameSplitter;
 import org.watto.io.buffer.ExporterByteBuffer;
 import org.watto.io.converter.IntConverter;
+import org.watto.io.converter.ShortConverter;
 import org.watto.task.TaskProgressManager;
 
 /**
@@ -58,13 +61,12 @@ public class Plugin_UCAS extends ArchivePlugin {
 
     setGames("Unreal Engine 4",
         "Godfall",
+        "Sapphire Safari",
         "Splitgate");
     setExtensions("ucas", "utoc"); // MUST BE LOWER CASE
     setPlatforms("PC");
 
-    //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
-    //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
-    //             );
+    setFileTypes(new FileType("texture2d", "Texture2D Image", FileType.TYPE_IMAGE));
 
   }
 
@@ -631,9 +633,15 @@ public class Plugin_UCAS extends ArchivePlugin {
         Resource_PAK_38[] culledResources = new Resource_PAK_38[numFiles];
         int numCulledFiles = 0;
 
+        boolean assetScan = Settings.getBoolean("IdentifyUnknownFileTypes");
+        if (assetScan) {
+          TaskProgressManager.setMessage(Language.get("IdentifyUnknownFileTypes"));
+        }
+
         // Now find any with the same name as a uasset
         Resource_PAK_38 asset = null;
         String assetName = "";
+        TaskProgressManager.setMaximum(numFiles);
         for (int i = 0; i < numFiles; i++) {
           Resource_PAK_38 resource = (Resource_PAK_38) resources[i];
 
@@ -651,11 +659,16 @@ public class Plugin_UCAS extends ArchivePlugin {
             }
 
             // now read a bit of the uasset file to determine the Class
-            String className = readUAssetClass(resource);
-            if (className != null) {
-              String name = resource.getName() + "." + className;
-              resource.setName(name);
-              resource.setOriginalName(name);
+
+            if (assetScan) {
+              //System.out.println(i + " of " + numFiles);
+              String pathAndName = readUAssetPathAndName(resource);
+              if (pathAndName != null) {
+                //String name = resource.getName() + "." + className;
+                String name = pathAndName;
+                resource.setName(name);
+                resource.setOriginalName(name);
+              }
             }
 
           }
@@ -710,22 +723,230 @@ public class Plugin_UCAS extends ArchivePlugin {
 
   /**
    **********************************************************************************************
-   Reads the properties of a UAsset file, looks for the Class, and returns it
+   Reads the properties of a UAsset file, and returns the Path+Name
    **********************************************************************************************
    **/
-  public String readUAssetClass(Resource resource) {
-    return null;
+  public String readUAssetPathAndName(Resource resource) {
 
     /*
-    // If this file is a uAsset, it really shouldn't use OODLE compression, but just in case we want to disable it for now (as it uses QuickBMS)
+    // Check for Oodle compression - if it uses it, don't examine this file, as it's inefficient
     ExporterPlugin originalExporter = resource.getExporter();
-    
+    if (originalExporter instanceof BlockVariableExporterWrapper) {
+      BlockVariableExporterWrapper blockExporter = (BlockVariableExporterWrapper) originalExporter;
+      ExporterPlugin[] exporters = blockExporter.getBlockExporters();
+      int numExporters = exporters.length;
+      for (int e = 0; e < numExporters; e++) {
+        if (exporters[e] instanceof Exporter_Oodle) {
+          return null;
+        }
+      }
+    }
+    */
+
+    //return null;
+
+    //originalExporter = resource.getExporter();
+
     try {
       long arcSize = resource.getDecompressedLength();
-    
-      ExporterByteBuffer byteBuffer = new ExporterByteBuffer(resource);
+
+      Resource resourceClone = resource;
+
+      ExporterPlugin originalExporter = resource.getExporter();
+      if (originalExporter instanceof BlockVariableExporterWrapper) {
+        BlockVariableExporterWrapper blockExporter = (BlockVariableExporterWrapper) originalExporter;
+        ExporterPlugin[] exporters = blockExporter.getBlockExporters();
+
+        if (exporters.length >= 1) {
+          // clone the resource, so we can set just the single exporter on it
+          resourceClone = (Resource) resource.clone();
+          resourceClone.setLength(blockExporter.getBlockLengths()[0]);
+          resourceClone.setDecompressedLength(blockExporter.getDecompLengths()[0]);
+          resourceClone.setOffset(blockExporter.getBlockOffsets()[0]);
+          resourceClone.setExporter(exporters[0]);
+        }
+
+      }
+
+      ExporterByteBuffer byteBuffer = new ExporterByteBuffer(resourceClone);
       FileManipulator fm = new FileManipulator(byteBuffer);
-    
+
+      try {
+        // Game = Sapphire Safari
+
+        // 48 - Unknown
+        fm.skip(48);
+
+        // 4 - File Data Offset
+        int fileDataOffset = fm.readInt();
+        FieldValidator.checkOffset(fileDataOffset, arcSize);
+
+        // 4 - Number of Names
+        int nameCount = fm.readInt();
+        FieldValidator.checkNumFiles(nameCount);
+
+        // 4 - Name Directory Length
+        int nameDirLength = fm.readInt();
+        FieldValidator.checkLength(nameDirLength, arcSize);
+
+        // 4 - Unknown
+        // 4 - Unknown
+        fm.skip(8);
+
+        // numNames*8 - Unknown
+        fm.skip(nameCount * 8);
+
+        int[] nameLengths = new int[nameCount];
+        //int longestNameLength = 0;
+        //int longestNameID = 0;
+        // for each name
+        for (int i = 0; i < nameCount; i++) {
+          //   2 - Name Length
+          int nameLength = ShortConverter.changeFormat(fm.readShort());
+          FieldValidator.checkFilenameLength(nameLength);
+          nameLengths[i] = nameLength;
+
+          //if (nameLength > longestNameLength) {
+          //  longestNameLength = nameLength;
+          //  longestNameID = i;
+          //}
+        }
+
+        String[] names = new String[nameCount];
+        // for each name
+        String extension = null;
+        for (int i = 0; i < nameCount; i++) {
+          //   X - Name
+          String name = fm.readString(nameLengths[i]);
+          names[i] = name;
+
+          if (name.startsWith("PF_")) {
+            extension = "Texture2D";
+          }
+          else if (name.startsWith("BINK")) {
+            extension = "bnk";
+          }
+
+        }
+
+        //String name = names[longestNameID];
+        String name = names[nameCount - 1];
+        if (extension != null) {
+          name += "." + extension;
+        }
+
+        // X - Unreal Properties
+        // X - File Data
+        fm.close();
+
+        return name;
+
+      }
+      catch (Throwable t) {
+        //
+        fm.seek(0);
+      }
+
+      // Game = Arcadegeddon
+      // Shortcut way, only looks for Texture2D, nothing else.
+
+      // 16 - null
+      // 4 - Unknown
+      // 4 - File Data Offset
+      // 4 - Name Directory Offset (64)
+      // 4 - Name Directory Length
+      // 4 - Unknown Directory 1 Offset
+      // 4 - Unknown Directory 1 Length
+      // 4 - Hash Block Offset
+      // 4 - Unknown Directory 2 Offset
+      // 4 - Unknown Directory 3 Offset
+      // 4 - Unknown Directory 4 Offset
+      // 4 - Unknown (4)
+      // 4 - null
+      fm.skip(64);
+
+      // 2 - Name Length
+      String extension = null;
+      short nameLength = ShortConverter.changeFormat(fm.readShort());
+      while (nameLength != 0) {
+        FieldValidator.checkFilenameLength(nameLength);
+
+        // X - Name
+        String name = fm.readString(nameLength);
+        //names[numNames] = name;
+
+        if (name.equals("Texture2D") || name.startsWith("PF_")) {
+          extension = "Texture2D";
+          break;
+        }
+
+        // 2 - Name Length
+        nameLength = ShortConverter.changeFormat(fm.readShort());
+      }
+
+      if (extension != null) {
+        return resource.getName() + "." + extension;
+      }
+
+      // 4 - null (2 bytes of this are already read in the above loop)
+
+      // UNKNOWN DIRECTORY 1
+      // 4 - Unknown (BIG)
+      // 4 - null
+      // X - Unknown
+
+      // HASH BLOCK
+      //  56 - Unknown
+
+      // UNKNOWN DIRECTORY 2
+      //   for each import
+      //     8 - File Data Offset
+      //     8 - File Length
+      //     4 - Filename ID?
+      //     4 - File Type ID?
+      //     8 - Unknown (4/-1)
+      //     32 - Hash?
+      //     8 - Unknown (0/3)
+
+      // UNKNOWN DIRECTORY 3
+      // X - Unknown
+
+      // UNKNOWN DIRECTORY 4 (Properties?)
+      //   4 - null
+      //   for each property
+      //     8 - Name ID
+      //     8 - Class ID
+      //     8 - Length
+      //     X - Data
+
+      // IntPoint
+      //  1 - null
+      //  4 - Point X
+      //  4 - Point Y
+
+      // BoolProperty
+      //   2 - Bool Value
+
+      // 4 - null
+      // 2 - Unknown (1)
+      // 2 - Unknown (1)
+      // 4 - Unknown (1)
+      // 4 - Image Format Name ID
+      // 4 - Unknown
+      // 4 - Image Width?
+      // 4 - Image Height?
+      // 4 - Unknown (1)
+      // 4 - Image Format String Length (including null)
+      // X - Image Format String (eg "PF_DXT5")
+      // 1 - null
+      // 4 - Unknown (1)
+      // 4 - Unknown (8)
+      // 4 - Unknown (1)
+      // 4 - Unknown
+      // 4 - Unknown
+      // 4 - Unknown
+
+      /*
       // 64 - Unknown
       fm.skip(64);
       
@@ -735,14 +956,14 @@ public class Plugin_UCAS extends ArchivePlugin {
       // 2 - Name Length
       short nameLength = ShortConverter.changeFormat(fm.readShort());
       while (nameLength != 0) {
-      FieldValidator.checkFilenameLength(nameLength);
+        FieldValidator.checkFilenameLength(nameLength);
       
-      // X - Name
+        // X - Name
         String name = fm.readString(nameLength);
         names[numNames] = name;
         numNames++;
       
-     // 2 - Name Length
+        // 2 - Name Length
         nameLength = ShortConverter.changeFormat(fm.readShort());
       }
       
@@ -755,30 +976,30 @@ public class Plugin_UCAS extends ArchivePlugin {
         nameCount = fm.readInt();
         FieldValidator.checkNumFiles(nameCount);
       }
-    
+      
       // 4 - Name Directory Offset
       long nameDirOffset = IntConverter.unsign(fm.readInt());
       FieldValidator.checkOffset(nameDirOffset, arcSize);
-    
+      
       // 8 - null
       fm.skip(8);
-    
+      
       // 4 - Number Of Exports
       int exportCount = fm.readInt();
       FieldValidator.checkNumFiles(exportCount);
-    
+      
       // 4 - Exports Directory Offset
       long exportDirOffset = IntConverter.unsign(fm.readInt());
       FieldValidator.checkOffset(exportDirOffset, arcSize);
-    
+      
       // 4 - Number Of Imports
       int importCount = fm.readInt();
       FieldValidator.checkNumFiles(importCount);
-    
+      
       // 4 - Import Directory Offset
       long importDirOffset = IntConverter.unsign(fm.readInt());
       FieldValidator.checkOffset(importDirOffset, arcSize);
-    
+      
       // 16 - null
       // 4 - [optional] null
       // 16 - GUID Hash
@@ -791,12 +1012,12 @@ public class Plugin_UCAS extends ArchivePlugin {
       else {
         fm.skip(32);
       }
-    
+      
       // 4 - Unknown (1)
       if (fm.readInt() != 1) { // this is to skip the OPTIONAL 4 bytes in MOST circumstances
         fm.skip(4);
       }
-    
+      
       // 4 - Unknown (1/2)
       // 4 - Unknown (Number of Names - again?)
       // 36 - null
@@ -806,55 +1027,56 @@ public class Plugin_UCAS extends ArchivePlugin {
       // 4 - File Length [+4] (not always - sometimes an unknown length/offset)
       // 8 - null
       fm.skip(68);
-    
+      
       // 4 - Number of ???
       int numToSkip = fm.readInt();
       if (numToSkip > 0 && numToSkip < 10) {
         // 4 - Unknown
         fm.skip(numToSkip * 4);
       }
-    
+      
       // 4 - Unknown (-1)
       fm.skip(4);
-    
+      
       // 4 - Files Data Offset
       long filesDirOffset = IntConverter.unsign(fm.readInt());
       FieldValidator.checkOffset(filesDirOffset, arcSize + 1);
-    
+      
       // Read the Names Directory
       fm.relativeSeek(nameDirOffset); // VERY IMPORTANT (because seek() doesn't allow going backwards in ExporterByteBuffer)
       UE4Helper.readNamesDirectory(fm, nameCount);
-    
+      
       // Read the Import Directory
       fm.relativeSeek(importDirOffset); // VERY IMPORTANT (because seek() doesn't allow going backwards in ExporterByteBuffer)
       UnrealImportEntry[] imports = UE4Helper.readImportDirectory(fm, importCount);
-    
+      
       int numFiles = importCount;
-    
+      
       // Loop through directory
       for (int i = 0; i < numFiles; i++) {
         UnrealImportEntry entry = imports[i];
-    
+      
         if (entry.getType().equals("Class")) {
           fm.close();
-    
+      
           // put the original exporter back
           resource.setExporter(originalExporter);
-    
+      
           return entry.getName();
         }
-    
+      
       }
-    
+      
       fm.close();
+      */
     }
     catch (Throwable t) {
     }
-    
+
     // put the original exporter back
-    resource.setExporter(originalExporter);
+    //resource.setExporter(originalExporter);
     return null;
-    */
+
   }
 
 }

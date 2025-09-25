@@ -2,8 +2,8 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.Language;
-import org.watto.task.TaskProgressManager;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -26,6 +26,7 @@ import org.watto.ge.plugin.ArchivePlugin;
 ////////////////////////////////////////////////////////////////////////////////////////////////
 import org.watto.io.FileManipulator;
 import org.watto.io.converter.ByteConverter;
+import org.watto.task.TaskProgressManager;
 
 /**
 **********************************************************************************************
@@ -143,6 +144,10 @@ public class Plugin_DAT_46 extends ArchivePlugin {
       // 4 - Number Of Files
       int numFiles = fm.readInt();
       FieldValidator.checkNumFiles(numFiles);
+
+      if (numFiles == 1) {
+        return null; // false positive
+      }
 
       // 4 - Archive Header Length (28)
       // 4 - File Data Length

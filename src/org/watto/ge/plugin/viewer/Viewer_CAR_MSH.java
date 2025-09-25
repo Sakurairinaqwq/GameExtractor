@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -18,6 +18,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Arrays;
+
 import org.watto.ErrorLogger;
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_3DModel;
@@ -34,6 +35,7 @@ import org.watto.ge.plugin.ViewerPlugin;
 import org.watto.ge.plugin.archive.Plugin_CAR;
 import org.watto.io.FileManipulator;
 import org.watto.io.buffer.ByteBuffer;
+
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Point3D;
 import javafx.scene.image.Image;
@@ -179,6 +181,8 @@ public class Viewer_CAR_MSH extends ViewerPlugin {
       //// no texture - load front and back faces
       faces = new int[numFaces6]; // need to store front and back faces
 
+      float[] textureUs = new float[numVertices];
+      float[] textureVs = new float[numVertices];
       for (int f = 0, j = 0; f < numFaces; f++, j += 6) {
         // 4 - Vertex 1
         // 4 - Vertex 2
@@ -191,9 +195,17 @@ public class Viewer_CAR_MSH extends ViewerPlugin {
         // 4 - Texture U 1
         // 4 - Texture U 2
         // 4 - Texture U 3
+        textureUs[facePoint1] = ((float) fm.readInt()) / 256;
+        textureUs[facePoint2] = ((float) fm.readInt()) / 256;
+        textureUs[facePoint3] = ((float) fm.readInt()) / 256;
+
         // 4 - Texture V 1
         // 4 - Texture V 2
         // 4 - Texture V 3
+        textureVs[facePoint1] = ((float) fm.readInt()) / 256;
+        textureVs[facePoint2] = ((float) fm.readInt()) / 256;
+        textureVs[facePoint3] = ((float) fm.readInt()) / 256;
+
         // 4 - Flags
         // 4 - Unknown
         // 4 - Parent Face Index
@@ -201,7 +213,8 @@ public class Viewer_CAR_MSH extends ViewerPlugin {
         // 4 - Unknown
         // 4 - Unknown
         // 4 - Unknown
-        fm.skip(52);
+        //fm.skip(52);
+        fm.skip(28);
 
         // reverse face first (so the light shines properly, for this model specifically)
         faces[j] = facePoint3;
@@ -243,8 +256,9 @@ public class Viewer_CAR_MSH extends ViewerPlugin {
         // Skip the texture mapping for now
         float xTexture = 0;
         float yTexture = 0;
-        //float xTexture = floats[uvOffset];
-        //float yTexture = floats[uvOffset + 1];
+
+        xTexture = textureUs[v];
+        yTexture = textureVs[v];
 
         texCoords[k] = xTexture;
         texCoords[k + 1] = yTexture;

@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -85,7 +85,7 @@ public class Viewer_CAR_TEX extends ViewerPlugin {
         return 0;
       }
 
-      if (fm.getLength() == 131072) { // fixed size 256x256
+      if (fm.getLength() % 512 == 0) { // fixed width images 256x###
         rating += 5;
       }
       else {
@@ -140,7 +140,7 @@ public class Viewer_CAR_TEX extends ViewerPlugin {
     try {
 
       int width = 256;
-      int height = 256;
+      int height = (int) (fm.getLength() / 2 / 256);
 
       // X - Pixels
       ImageResource imageResource = ImageFormatReader.readRGBA5551(fm, width, height);

@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -30,7 +31,7 @@ public class Plugin_DAT_57 extends ArchivePlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public Plugin_DAT_57() {
@@ -56,7 +57,7 @@ public class Plugin_DAT_57 extends ArchivePlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -134,6 +135,10 @@ public class Plugin_DAT_57 extends ArchivePlugin {
         // 4 - File Offset
         int offset = fm.readInt();
         FieldValidator.checkOffset(offset, arcSize);
+
+        if (offset == 0) {
+          return null; // false positive
+        }
 
         // 4 - File Length (including Padding)
         fm.skip(4);

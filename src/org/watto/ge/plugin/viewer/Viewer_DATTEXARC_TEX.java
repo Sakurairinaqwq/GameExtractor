@@ -14,11 +14,14 @@
 
 package org.watto.ge.plugin.viewer;
 
+import java.awt.Image;
+
 import org.watto.ErrorLogger;
 import org.watto.component.PreviewPanel;
 import org.watto.component.PreviewPanel_Image;
 import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
+import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageFormatWriter;
@@ -29,6 +32,7 @@ import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
 import org.watto.ge.plugin.archive.Plugin_DATTEXARC;
 import org.watto.io.FileManipulator;
+import org.watto.io.buffer.ByteBuffer;
 
 /**
 **********************************************************************************************
@@ -68,6 +72,9 @@ public class Viewer_DATTEXARC_TEX extends ViewerPlugin {
   **/
   @Override
   public boolean canReplace(PreviewPanel panel) {
+    if (panel instanceof PreviewPanel_Image) {
+      return true;
+    }
     return false;
   }
 
@@ -217,142 +224,104 @@ public class Viewer_DATTEXARC_TEX extends ViewerPlugin {
   **/
   @Override
   public void write(PreviewPanel preview, FileManipulator fm) {
+  }
+
+  /**
+  **********************************************************************************************
+  We can't WRITE these files from scratch, but we can REPLACE some of the images with new content  
+  **********************************************************************************************
+  **/
+  public void replace(Resource resourceBeingReplaced, PreviewPanel preview, FileManipulator fm) {
     try {
 
       if (!(preview instanceof PreviewPanel_Image)) {
         return;
       }
 
-      ImageManipulator im = new ImageManipulator((PreviewPanel_Image) preview);
+      PreviewPanel_Image ivp = (PreviewPanel_Image) preview;
+      Image image = ivp.getImage();
+      int width = ivp.getImageWidth();
+      int height = ivp.getImageHeight();
 
-      int imageWidth = im.getWidth();
-      int imageHeight = im.getHeight();
-
-      if (imageWidth == -1 || imageHeight == -1) {
+      if (width == -1 || height == -1) {
         return;
       }
 
-      // Generate all the mipmaps of the image
-      ImageResource[] mipmaps = im.generateMipmaps();
-      int mipmapCount = mipmaps.length;
-
-      // Set some property defaults in case we're doing a conversion (and thus there probably isn't any properties set)
-      int fileID = 0;
-      int hash = 0;
-      String filename = "";
-
-      // Now try to get the property values from the ImageResource, if they exist
+      // Try to get the existing ImageResource (if it was stored), otherwise build a new one
       ImageResource imageResource = ((PreviewPanel_Image) preview).getImageResource();
-
-      if (imageResource != null) {
-        mipmapCount = imageResource.getProperty("MipmapCount", mipmapCount);
-        fileID = imageResource.getProperty("FileID", 0);
-        hash = imageResource.getProperty("Hash", 0);
-        filename = imageResource.getProperty("Filename", "");
+      if (imageResource == null) {
+        imageResource = new ImageResource(image, width, height);
       }
 
-      if (filename.equals("")) {
-        filename = fm.getFile().getName();
+      // Extract the original resource into a byte[] array, so we can reference it
+      int srcLength = (int) resourceBeingReplaced.getDecompressedLength();
+      if (srcLength > 62) {
+        srcLength = 62; // allows enough reading for the header, but not much of the original image data
       }
-      if (mipmapCount > mipmaps.length) {
-        mipmapCount = mipmaps.length;
+      //byte[] srcBytes = new byte[(int) resourceBeingReplaced.getDecompressedLength()];
+      byte[] srcBytes = new byte[srcLength];
+      FileManipulator src = new FileManipulator(new ByteBuffer(srcBytes));
+      resourceBeingReplaced.extract(src);
+      src.seek(0);
+
+      // Build the new file using the src[] and adding in the new image content
+
+      // 4 - Unknown
+      // 4 - Unknown
+      fm.writeBytes(src.readBytes(8));
+
+      // 4 - Image Format? (8=8bit Paletted, 4=4bit Paletted)
+      src.skip(4);
+      fm.writeInt(8); // force to 8-bit 
+
+      // 4 - Image Width
+      fm.writeInt(width);
+      src.skip(4);
+
+      // 4 - Image Height
+      fm.writeInt(height);
+      src.skip(4);
+
+      // 2 - Unknown (1)
+      fm.writeBytes(src.readBytes(2));
+
+      // 2 - Number of Mipmaps? [+1]
+      int numMipmaps = src.readShort();
+      fm.writeShort(numMipmaps);
+
+      numMipmaps++;
+
+      // 4 - Flags
+      // 4 - Unknown (64/4)
+      // 4 - Unknown (1)
+      fm.writeBytes(src.readBytes(12));
+
+      // We've forced it to 8-bit for simplicity
+      ImageManipulator im = new ImageManipulator(imageResource);
+      im.changeColorCountRGBSingleAlpha(256);
+
+      int[] palette = im.getPalette();
+      palette = ImageSwizzler.stripePalettePS2(palette);
+      palette = ImageFormatWriter.halveAlpha(palette);
+      ImageFormatWriter.writePaletteRGBA(fm, palette);
+
+      if (numMipmaps == 1) {
+        // only 1 mipmap (the image itself)
+        byte[] pixels = im.getPixelBytes();
+        fm.writeBytes(pixels);
       }
+      else {
+        // multiple mipmaps
+        ImageManipulator[] mipmaps = im.generatePalettedMipmaps();
 
-      // work out the file length
-      long fileLength = 28 + filename.length() + 1 + (mipmapCount * 4);
-      for (int i = 0; i < mipmapCount; i++) {
-        int mipmapHeight = mipmaps[i].getHeight();
-        int mipmapWidth = mipmaps[i].getWidth();
-
-        // This is DXT3 format - width/height have to be a minimum of 4 pixels each (smaller images have padding around them to 4x4 size)
-        if (mipmapHeight < 4) {
-          mipmapHeight = 4;
-        }
-        if (mipmapWidth < 4) {
-          mipmapWidth = 4;
+        for (int i = 0; i < numMipmaps; i++) {
+          byte[] pixels = mipmaps[i].getPixelBytes();
+          fm.writeBytes(pixels);
         }
 
-        // DXT3 is 1 byte per pixel
-        int byteCount = (mipmapHeight * mipmapWidth);
-        fileLength += byteCount;
-      }
-
-      // 4 - Header (3TXD)
-      fm.writeString("3TXD");
-
-      // 4 - File Length (including all these header fields)
-      fm.writeInt(fileLength);
-
-      // 4 - File ID
-      fm.writeInt(fileID);
-
-      // 2 - Image Height
-      fm.writeShort((short) imageHeight);
-
-      // 2 - Image Width
-      fm.writeShort((short) imageWidth);
-
-      // 4 - Number Of Mipmaps
-      fm.writeInt(mipmapCount);
-
-      // 4 - File Type? (28)
-      fm.writeInt(28);
-
-      // 4 - Hash?
-      fm.writeInt(hash);
-
-      // X - Filename
-      // 1 - null Filename Terminator
-      fm.writeString(filename);
-      fm.writeByte(0);
-
-      // X - Mipmaps
-      for (int i = 0; i < mipmapCount; i++) {
-        ImageResource mipmap = mipmaps[i];
-
-        int mipmapHeight = mipmap.getHeight();
-        int resizedHeight = mipmapHeight;
-        if (resizedHeight < 4) {
-          resizedHeight = 4;
-        }
-
-        int mipmapWidth = mipmap.getWidth();
-        int resizedWidth = mipmapWidth;
-        if (resizedWidth < 4) {
-          resizedWidth = 4;
-        }
-
-        int pixelCount = resizedWidth * resizedHeight;
-
-        // 4 - Data Length
-        fm.writeInt(pixelCount); // DXT3 is 1bytes per pixel
-
-        int pixelLength = mipmap.getNumPixels();
-        if (pixelLength < pixelCount) {
-          // one of the smallest mipmaps (eg 1x1 or 2x2) --> needs to be resized to 4x4
-          int[] oldPixels = mipmap.getImagePixels();
-          int[] newPixels = new int[pixelCount]; // minimum of 4x4, but if one dimension is already > 4, can be larger
-
-          for (int h = 0; h < resizedHeight; h++) {
-            for (int w = 0; w < resizedWidth; w++) {
-              if (h < mipmapHeight && w < mipmapWidth) {
-                // copy the pixel from the original
-                newPixels[h * resizedWidth + w] = oldPixels[h * mipmapWidth + w];
-              }
-              else {
-                newPixels[h * resizedWidth + w] = 0;
-              }
-            }
-          }
-          mipmap.setPixels(newPixels);
-          mipmap.setWidth(resizedWidth);
-          mipmap.setHeight(resizedHeight);
-        }
-
-        // X - Pixels
-        ImageFormatWriter.writeDXT3(fm, mipmap);
       }
 
+      src.close();
       fm.close();
 
     }

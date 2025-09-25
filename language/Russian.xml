@@ -1621,6 +1621,10 @@
 		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Text" value="Strip" />
 		<lang code="WSCheckBox_PreviewPanel_MeshInvestigator_TriangleStripCheckbox_Tooltip" value="Whether face indeces should be read as a triangle strip (ticked) or as individual triangles (unticked)" />
 		
+<!-- New with 3.16.0002 -->
+
+		<lang code="WSLabel_JavaFXMissing_Text" value="It looks like Game Extractor is running in a version of Java that's missing the JavaFX libraries.\n\nPlease run the JavaFX version of Game Extractor instead." />
+		
 		<lang code="" value="" />
 		
 	</texts>

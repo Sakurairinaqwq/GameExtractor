@@ -31,6 +31,7 @@ import org.watto.event.WSEnterableInterface;
 import org.watto.event.WSSelectableInterface;
 import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.helper.ImageSwizzler;
+import org.watto.ge.helper.PaletteGenerator;
 import org.watto.io.FileManipulator;
 import org.watto.io.buffer.ByteBuffer;
 import org.watto.xml.XMLReader;
@@ -358,6 +359,8 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
   public void loadPaletteFormats() {
     String[] paletteFormats = new String[] {
         "Grayscale",
+        "Mode 13h",
+        "Windows 95",
         "ARGB",
         "ABGR",
         "RGBA",
@@ -632,6 +635,12 @@ public class PreviewPanel_ImageInvestigator extends PreviewPanel_Image implement
 
       if (paletteFormat.equals("Grayscale")) {
         palette = null; // will use the default color palette down further
+      }
+      else if (paletteFormat.equals("Mode 13h")) {
+        palette = PaletteGenerator.getMode13h();
+      }
+      else if (paletteFormat.equals("Windows 95")) {
+        palette = PaletteGenerator.getWindows95();
       }
       else if (paletteFormat.equals("ARGB")) {
         palette = ImageFormatReader.readARGB(fm, 1, paletteNumColors).getImagePixels();

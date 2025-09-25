@@ -136,6 +136,10 @@ public class Plugin_DAT_104 extends ArchivePlugin {
       int numFiles = fm.readShort();
       FieldValidator.checkNumFiles(numFiles);
 
+      if (numFiles == 1) {
+        return null; // false positive
+      }
+
       // 2 - Unknown (0)
       // 4 - Unknown (11)
       fm.skip(6);
@@ -149,6 +153,10 @@ public class Plugin_DAT_104 extends ArchivePlugin {
         // 2 - File Offset [*2048]
         int offset = ShortConverter.unsign(fm.readShort()) * 2048;
         FieldValidator.checkOffset(offset, arcSize);
+
+        if (offset == 0) {
+          return null; // false positive
+        }
 
         // 2 - File Length [*2048] (including file padding)
         int length = fm.readShort() * 2048;
