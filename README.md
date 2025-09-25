@@ -29,9 +29,9 @@ of compression algorithms.
 Game Extractor requires you to have Java Runtime Environment 8.0 (or 1.8) or later installed on
 your computer. This is a free download from http://www.java.com 
 
-If you are using Java version 10 or newer, you will need to install the JavaFX libraries as well,
-as they are no longer part of the JRE. These are available from https://openjfx.io/ and will need
-to be on your classpath (or in the main Game Extractor directory).
+If you are using Java version 11 or newer, we have included the JavaFX libraries which should be
+suitable for most Windows users. There is a new executable *GameExtractor_javafx.exe* to force
+the use of the included JavaFX libraries.
 
 We maintain the project using Eclipse. You should be able to download the repository, and import
 it into Eclipse via the menu path File -- Open Projects from File System. The main entry point
@@ -72,6 +72,22 @@ common errors and problems, and information on the full version.
 There is a Contact Form on our website, if you need to contact us for any further purpose.
 
 ## Version History
+
+* Version 3.16.0002
+  * [I] Small incremental version, with the intention of primarily adding more supported games.
+  * [A] Have now added JavaFX libraries and a separate executable, for running on PCs with Java 11+
+  * [B] DXT3 images now display with their alpha channel
+
+* Version 3.16.0001
+  * [I] Small incremental version, with the intention of primarily adding more supported games.
+  * [A] Previews are cleaned up before opening the new preview, to reduce memory usage
+  * [A] BC6H Texture2D images can now be displayed from Unity archives
+  * [A] Additional swizzling functions for consoles have been added
+  * [B] Unity3D and ResS files larger than 4GB are now read and/or split properly
+  * [B] When choosing both an Image and a Mesh converter when extracting, the meshes will now be
+        converted to the mesh format instead of the image format.
+  * [B] Bug fixes for the use of ShellFolder in newer Java versions (eg Java 21+)
+  * [B] Saving changes to a text file will now save the currently-edited cell as well
 
 * Version 3.16
   * [I] Support for more games, with a focus on adding previews and write support, where possible.
