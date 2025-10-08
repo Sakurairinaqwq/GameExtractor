@@ -47,7 +47,9 @@ public class Plugin_NoExt_RDFZ extends ArchivePlugin {
     setProperties(true, false, false, false);
 
     setGames("The Treasures of Montezuma 3",
-        "Vacation Mogul");
+        "Vacation Mogul",
+        "Dark Strokes: Sins of the Fathers",
+        "Dark Strokes: The Legend of the Snow Kingdom");
     setExtensions(""); // MUST BE LOWER CASE
     setPlatforms("PC");
 
@@ -154,6 +156,10 @@ public class Plugin_NoExt_RDFZ extends ArchivePlugin {
         }
       }
 
+      //FileManipulator tempFM = new FileManipulator(new File("C:\\temp.txt"), true);
+      //tempFM.writeBytes(dirBytes);
+      //tempFM.close();
+
       // read all the names
       FileManipulator nameFM = new FileManipulator(new ByteBuffer(dirBytes));
 
@@ -206,10 +212,11 @@ public class Plugin_NoExt_RDFZ extends ArchivePlugin {
       for (int i = 0; i < numFilenames; i++) {
         // 4 - Filename Length
         int nameLength = nameFM.readInt();
-        FieldValidator.checkFilenameLength(nameLength);
+        FieldValidator.checkFilenameLength(nameLength + 1); // allow nulls
 
         // X - Filename
         String name = nameFM.readString(nameLength);
+        //System.out.println(nameFM.getOffset() + name);
 
         filenames[i] = name;
       }
@@ -309,6 +316,9 @@ public class Plugin_NoExt_RDFZ extends ArchivePlugin {
     }
     else if (name.startsWith("webm")) {
       return "webm";
+    }
+    else if (name.startsWith("ptc")) {
+      return "ptc";
     }
     else if (name.startsWith("jimg_texture") || headerInt2 == -520103681) {
       resource.setOffset(resource.getOffset() + 4);

@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -222,6 +222,7 @@ public class Viewer_Unity3D_TEX extends ViewerPlugin {
       else if (formatCode == 25) {
         // 25 = BC7
         imageResource = ImageFormatReader.flipVertically(ImageFormatReader.readBC7(fm, width, height));
+        imageResource = ImageFormatReader.swapRedAndBlue(imageResource);
         imageResource.addProperty("ImageFormat", "BC7");
       }
       else if (formatCode == 26) {

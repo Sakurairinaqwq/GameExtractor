@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2021 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Archive;
 import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
@@ -200,6 +201,24 @@ public class Plugin_SPD extends ArchivePlugin {
     }
     else if (headerBytes[1] == 13 && headerBytes[2] == 10) {
       return "txt";
+    }
+    else if (headerInt1 == resource.getLength() - 4) {
+      if (headerShort3 > 0 && headerShort3 <= 1024 && headerShort4 > 0 && headerShort4 <= 1024) {
+        return "tex";
+      }
+    }
+    else {
+      boolean ascii = true;
+      int headerLength = headerBytes.length;
+      for (int i = 0; i < headerLength; i++) {
+        if (headerBytes[i] < 8) {
+          ascii = false;
+          break;
+        }
+      }
+      if (ascii) {
+        return "txt";
+      }
     }
 
     return null;

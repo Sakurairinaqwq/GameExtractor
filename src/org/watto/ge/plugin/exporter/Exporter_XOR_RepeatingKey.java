@@ -45,6 +45,7 @@ public class Exporter_XOR_RepeatingKey extends ExporterPlugin {
   int keyLength = 0;
 
   int currentKeyPos = 0;
+  int startingKeyPos = 0; // so every time we open() we reset back to this position
 
   /**
   **********************************************************************************************
@@ -79,6 +80,7 @@ public class Exporter_XOR_RepeatingKey extends ExporterPlugin {
     this.xorKey = xorKey;
     this.keyLength = xorKey.length;
     this.currentKeyPos = keyPos;
+    this.startingKeyPos = keyPos;
     openAtCurrentKeyPos = true;
   }
 
@@ -135,6 +137,9 @@ public class Exporter_XOR_RepeatingKey extends ExporterPlugin {
       if (!openAtCurrentKeyPos) {
         currentKeyPos = 0;
       }
+      else {
+        currentKeyPos = startingKeyPos;
+      }
 
       readLength = source.getLength();
 
@@ -161,6 +166,9 @@ public class Exporter_XOR_RepeatingKey extends ExporterPlugin {
 
     if (!openAtCurrentKeyPos) {
       currentKeyPos = 0;
+    }
+    else {
+      currentKeyPos = startingKeyPos;
     }
 
     readLength = compLengthIn;

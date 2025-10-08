@@ -430,7 +430,7 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
   **********************************************************************************************
   **/
   public static boolean isFullVersion() {
-    return false;
+      return false;
   }
 
   /**
@@ -613,6 +613,9 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
 
     // writes out the list of ArchivePlugins and ViewerPlugins, for the excel spreadsheet
     //outputPluginExcelList();
+
+    // 3.16.0003 Write the Java version out to the logs, to help with error analysis/resolution
+    ErrorLogger.log("JAVA VERSION: " + System.getProperty("java.version"));
 
   }
 

@@ -1,29 +1,26 @@
-
+/*
+ * Application:  Game Extractor
+ * Author:       wattostudios
+ * Website:      http://www.watto.org
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
+ *
+ * License Information:
+ * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
+ * published by the Free Software Foundation; either version 2 of the License, or (at your option) any later versions. This
+ * program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranties
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License at http://www.gnu.org for more
+ * details. For further information on this application, refer to the authors' website.
+ */
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
-import org.watto.task.TaskProgressManager;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
-////////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                            //
-//                                       GAME EXTRACTOR                                       //
-//                               Extensible Game Archive Editor                               //
-//                                http://www.watto.org/extract                                //
-//                                                                                            //
-//                           Copyright (C) 2002-2009  WATTO Studios                           //
-//                                                                                            //
-// This program is free software; you can redistribute it and/or modify it under the terms of //
-// the GNU General Public License published by the Free Software Foundation; either version 2 //
-// of the License, or (at your option) any later versions. This program is distributed in the //
-// hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranties //
-// of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License //
-// at http://www.gnu.org for more details. For updates and information about this program, go //
-// to the WATTO Studios website at http://www.watto.org or email watto@watto.org . Thanks! :) //
-//                                                                                            //
-////////////////////////////////////////////////////////////////////////////////////////////////
 import org.watto.io.FileManipulator;
+import org.watto.io.buffer.ByteBuffer;
+import org.watto.task.TaskProgressManager;
 
 /**
 **********************************************************************************************
@@ -48,83 +45,15 @@ public class Plugin_AR_ARES extends ArchivePlugin {
     setExtensions("ar");
     setPlatforms("PC");
 
-    setFileTypes("msh", "Object Mesh",
-        "bnd", "Object Bindings",
-        "dds", "DirectX Image",
-        "pld", "PLD File",
-        "set", "Settings",
-        "vtx", "Person Vertex",
-        "bne", "Person Bones",
-        "mms", "Midtown Madness Settings",
-        "car", "Car Settings",
-        "vid", "Video Position",
-        "mnu", "Menu Settings");
+    // MUST BE LOWER CASE !!!
+    //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
+    //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
+    //             );
 
-  }
+    setTextPreviewExtensions("cinfo", "info", "aimap", "aimap_p", "aivehicledata", "aivehiclemanager", "asbirthrule", "asflycs", "assimulation", "bat", "c", "c13", "c14", "c19", "c24", "c25", "c26", "c27", "c28", "c29", "c30", "c31", "cells", "gizmo", "mmbangerdata", "mmbridgemgr", "mmbridgeset", "mmcarsim", "mmdashview", "mminput", "mmnetworkcaraudio", "mmopponentcaraudio", "mmplayer", "mmplayercaraudio", "mmtrailer", "mod", "povcamcs", "rays", "skel", "trackcamcs", "tsh"); // LOWER CASE
 
-  /**
-  **********************************************************************************************
-  
-  **********************************************************************************************
-  **/
-  public String detectFileType(String fileStart) {
-    try {
+    //setCanScanForFileTypes(true);
 
-      if (fileStart.indexOf("RIFF") >= 0) {
-        return ".wav";
-      }
-      else if (fileStart.indexOf("JFIF") >= 0) {
-        return ".jpg";
-      }
-      else if (fileStart.indexOf("3HSM") >= 0) {
-        return ".msh";
-      }
-      else if (fileStart.indexOf("2DNB") >= 0) {
-        return ".bnd";
-      }
-      else if (fileStart.indexOf("DDS") >= 0) {
-        return ".dds";
-      }
-      else if (fileStart.indexOf("DLP7") >= 0) {
-        return ".pld";
-      }
-      else if (fileStart.indexOf("x,y,z") >= 0) {
-        return ".set";
-      }
-      else if (fileStart.indexOf("# ") >= 0) {
-        return ".set";
-      }
-      else if (fileStart.indexOf("version") >= 0) {
-        return ".vtx";
-      }
-      else if (fileStart.indexOf("NumBones") >= 0) {
-        return ".bne";
-      }
-      else if (fileStart.indexOf("mm") >= 0) {
-        return ".mms";
-      }
-      else if (fileStart.indexOf("name") >= 0) {
-        return ".car";
-      }
-      else if (fileStart.indexOf("TrackCam") >= 0) {
-        return ".vid";
-      }
-      else if (fileStart.indexOf("PovCam") >= 0) {
-        return ".vid";
-      }
-      else if (fileStart.indexOf("MENU") >= 0) {
-        return ".mnu";
-      }
-      else if (fileStart.indexOf("BaseName") >= 0) {
-        return ".set";
-      }
-
-      return ".unk";
-
-    }
-    catch (Throwable t) {
-      return ".unk";
-    }
   }
 
   /**
@@ -148,10 +77,15 @@ public class Plugin_AR_ARES extends ArchivePlugin {
       }
 
       // Number Of Files
-      int numFiles = fm.readInt();
-      if (FieldValidator.checkNumFiles(numFiles)) {
+      if (FieldValidator.checkNumFiles(fm.readInt())) {
         rating += 5;
       }
+
+      fm.skip(4);
+
+      // 4 - Filename Directory Length
+      if (FieldValidator.checkLength(fm.readInt(), fm.getLength()))
+        ;
 
       return rating;
 
@@ -160,6 +94,8 @@ public class Plugin_AR_ARES extends ArchivePlugin {
       return 0;
     }
   }
+
+  int realNumFiles = 0;
 
   /**
   **********************************************************************************************
@@ -170,60 +106,45 @@ public class Plugin_AR_ARES extends ArchivePlugin {
   public Resource[] read(File path) {
     try {
 
+      // RESET GLOBALS
+      realNumFiles = 0;
+
       addFileTypes();
 
       FileManipulator fm = new FileManipulator(path, false);
+      long arcSize = fm.getLength();
 
       // 4 - Header (ARES)
       fm.skip(4);
 
-      // 4 - Number Of Files
-      int numFiles = fm.readInt() - 3;
+      // 4 - Number of Files
+      int numFiles = fm.readInt();
       FieldValidator.checkNumFiles(numFiles);
 
-      long arcSize = fm.getLength();
+      // 4 - Number of Folders in the Root
+      int numRootFolders = fm.readInt();
+      FieldValidator.checkNumFiles(numRootFolders);
+
+      // 4 - Filename Directory Length
+      int filenameDirLength = fm.readInt();
+      FieldValidator.checkLength(filenameDirLength, arcSize);
 
       Resource[] resources = new Resource[numFiles];
       TaskProgressManager.setMaximum(numFiles);
 
-      fm.seek(52);
+      // Get the filenames directory
+      fm.skip(numFiles * 12);
+      byte[] filenameBytes = fm.readBytes(filenameDirLength);
+      fm.seek(16);
 
-      long[] offsets = new long[numFiles];
+      FileManipulator nameFM = new FileManipulator(new ByteBuffer(filenameBytes));
 
       // Loop through directory
-      for (int i = 0; i < numFiles; i++) {
-        // 4 Bytes - Data Offset
-        long offset = fm.readInt();
-        FieldValidator.checkOffset(offset, arcSize);
+      readDirectory(fm, path, arcSize, resources, numRootFolders, "", nameFM);
 
-        offsets[i] = offset;
+      resources = resizeResources(resources, realNumFiles);
 
-        // 4 Bytes - Unknown
-        // 4 Bytes - Unknown
-        fm.skip(8);
-      }
-
-      for (int i = 0; i < numFiles; i++) {
-        long length;
-        if (i < numFiles - 1) {
-          length = (offsets[i + 1] - offsets[i]);
-        }
-        else {
-          length = arcSize - offsets[i];
-        }
-
-        String filename = Resource.generateFilename(i);
-
-        fm.seek(offsets[i]);
-        String fileStart = fm.readString(16);
-        filename += detectFileType(fileStart);
-
-        //path,id,name,offset,length,decompLength,exporter
-        resources[i] = new Resource(path, filename, offsets[i], length);
-
-        TaskProgressManager.setValue(i);
-      }
-
+      nameFM.close();
       fm.close();
 
       return resources;
@@ -232,6 +153,88 @@ public class Plugin_AR_ARES extends ArchivePlugin {
     catch (Throwable t) {
       logError(t);
       return null;
+    }
+  }
+
+  /**
+  **********************************************************************************************
+  
+  **********************************************************************************************
+  **/
+
+  public void readDirectory(FileManipulator fm, File path, long arcSize, Resource[] resources, int numEntries, String dirName, FileManipulator nameFM) {
+    try {
+
+      int[] dirOffsets = new int[numEntries];
+      int[] dirFileCounts = new int[numEntries];
+      String[] dirNames = new String[numEntries];
+      int numDirs = 0;
+
+      for (int i = 0; i < numEntries; i++) {
+        // 4 - File Offset
+        int offset = fm.readInt();
+        FieldValidator.checkOffset(offset, arcSize);
+
+        // 4 - File Length [& 0x7FFFFF]
+        int lengthField = fm.readInt();
+        int length = (lengthField & 0x7FFFFF);
+        FieldValidator.checkLength(length, arcSize);
+
+        // 4 - Flags
+        int flags = fm.readInt();
+
+        boolean isDirectory = ((flags & 1) == 1);
+        int filenameOffset = ((flags >> 14) & 0x3FFFF);
+
+        nameFM.seek(filenameOffset);
+        String name = nameFM.readNullString();
+
+        int filenameNumber = ((flags >> 1) & 0x1FFF);
+        //if (filenameNumber != 0) {
+        int nameLength = name.length();
+        for (int c = 0; c < nameLength; c++) {
+          if (((int) name.charAt(c)) == 1) {
+            name = name.substring(0, c) + filenameNumber + name.substring(c + 1);
+          }
+        }
+        //}
+
+        if (isDirectory) {
+          // directory
+          dirOffsets[numDirs] = 16 + (offset * 12);
+          dirFileCounts[numDirs] = length;
+          dirNames[numDirs] = dirName + name + "\\";
+          numDirs++;
+        }
+        else {
+          // file
+
+          int extensionOffset = ((lengthField >> 23) & 0x1FF);
+          nameFM.seek(extensionOffset);
+          String extension = nameFM.readNullString();
+
+          //System.out.println(offset + "\t" + length + "\t" + isDirectory + "\t" + extensionOffset + "\t" + filenameOffset + "\t" + filenameNumber);
+
+          String filename = dirName + name + "." + extension;
+
+          //path,id,name,offset,length,decompLength,exporter
+          resources[realNumFiles] = new Resource(path, filename, offset, length);
+          realNumFiles++;
+
+          TaskProgressManager.setValue(realNumFiles);
+        }
+      }
+
+      // now go through and process each directory
+      for (int i = 0; i < numDirs; i++) {
+        fm.seek(dirOffsets[i]);
+        readDirectory(fm, path, arcSize, resources, dirFileCounts[i], dirNames[i], nameFM);
+      }
+
+    }
+    catch (Throwable t) {
+      logError(t);
+      return;
     }
   }
 

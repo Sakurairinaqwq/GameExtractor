@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Archive;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -160,10 +161,11 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
       TaskProgressManager.setMaximum(numFiles);
 
       // Loop through directory
+      int realNumFiles = 0;
       for (int i = 0; i < numFiles; i++) {
         // 8 - File Offset
         long offset = fm.readLong();
-        FieldValidator.checkOffset(offset, arcSize);
+        //FieldValidator.checkOffset(offset, arcSize);
 
         // 4 - Hash?
         // 4 - null
@@ -173,10 +175,22 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
         int length = fm.readInt();
         FieldValidator.checkLength(length, arcSize);
 
+        if (offset > arcSize) {
+          continue;
+        }
+
+        String filename = Resource.generateFilename(realNumFiles);
+
         //path,name,offset,length,decompLength,exporter
-        resources[i] = new Resource(path, "", offset, length);
+        resources[realNumFiles] = new Resource(path, filename, offset, length);
+        realNumFiles++;
 
         TaskProgressManager.setValue(i);
+      }
+
+      if (realNumFiles != numFiles) {
+        resources = resizeResources(resources, realNumFiles);
+        numFiles = realNumFiles;
       }
 
       fm.seek(filenameDirOffset);

@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,9 +15,12 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
+import org.watto.ge.plugin.ExporterPlugin;
+import org.watto.ge.plugin.exporter.Exporter_ZLib;
 import org.watto.io.FileManipulator;
 import org.watto.task.TaskProgressManager;
 
@@ -30,7 +33,7 @@ public class Plugin_DAT_WAZZZZAUP extends ArchivePlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public Plugin_DAT_WAZZZZAUP() {
@@ -51,11 +54,13 @@ public class Plugin_DAT_WAZZZZAUP extends ArchivePlugin {
     //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
     //             );
 
+    setTextPreviewExtensions("sound", "ispy", "overlay", "particle", "scene", "material"); // LOWER CASE
+
   }
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -100,7 +105,7 @@ public class Plugin_DAT_WAZZZZAUP extends ArchivePlugin {
 
       addFileTypes();
 
-      //ExporterPlugin exporter = Exporter_ZLib.getInstance();
+      ExporterPlugin exporter = Exporter_ZLib.getInstance();
 
       // RESETTING GLOBAL VARIABLES
 
@@ -115,18 +120,20 @@ public class Plugin_DAT_WAZZZZAUP extends ArchivePlugin {
       int numFiles = fm.readInt();
       FieldValidator.checkNumFiles(numFiles);
 
-      // 4 - null
+      // 4 - Unknown
       fm.skip(4);
 
       Resource[] resources = new Resource[numFiles];
       TaskProgressManager.setMaximum(numFiles);
 
       // Loop through directory
+      int[] lengths = new int[numFiles];
       for (int i = 0; i < numFiles; i++) {
-        // 4 - File Length
-        fm.skip(4);
+        // 4 - Decompressed File Length
+        int decompLength = fm.readInt();
+        FieldValidator.checkLength(decompLength);
 
-        // 4 - File Length
+        // 4 - Compressed File Length (null if not compressed)
         int length = fm.readInt();
         FieldValidator.checkLength(length, arcSize);
 
@@ -139,27 +146,62 @@ public class Plugin_DAT_WAZZZZAUP extends ArchivePlugin {
 
         // X - Filename
         String filename = fm.readString(filenameLength);
-        FieldValidator.checkFilename(filename);
 
-        // 4 - Unknown (1)
-        // 1 - Unknown (36)
-        fm.skip(5);
+        // 4 - Directory Name Length (can be null)
+        int dirNameLength = fm.readInt();
+        FieldValidator.checkFilenameLength(dirNameLength + 1);
 
-        //path,name,offset,length,decompLength,exporter
-        resources[i] = new Resource(path, filename, 0, length);
+        // X - Directory Name (starts with "." or ".\" or ".\\")
+        String dirName = fm.readString(dirNameLength);
+
+        if (dirNameLength >= 1 && dirName.charAt(0) == '.') {
+          if (dirNameLength >= 2 && dirName.charAt(1) == '\\') {
+            if (dirNameLength >= 3 && dirName.charAt(2) == '\\') {
+              dirName = dirName.substring(3);
+              dirNameLength = dirName.length();
+            }
+            else {
+              dirName = dirName.substring(2);
+              dirNameLength = dirName.length();
+            }
+          }
+          else {
+            dirName = dirName.substring(1);
+            dirNameLength = dirName.length();
+          }
+        }
+
+        if (dirNameLength > 0) {
+          filename = dirName + '\\' + filename;
+        }
+
+        if (length == 0 || (length == decompLength)) {
+          // raw file
+
+          //path,name,offset,length,decompLength,exporter
+          resources[i] = new Resource(path, filename, 0, decompLength);
+
+          lengths[i] = decompLength;
+        }
+        else {
+          // compressed
+
+          //path,name,offset,length,decompLength,exporter
+          resources[i] = new Resource(path, filename, 0, length, decompLength, exporter);
+
+          lengths[i] = length;
+        }
 
         TaskProgressManager.setValue(i);
       }
 
       // Calculate the offsets
       long offset = fm.getOffset();
-      for (int i = 0; i < numFiles; i++) {
-        Resource resource = resources[i];
-        long length = resource.getLength();
 
+      for (int i = 0; i < numFiles; i++) {
         FieldValidator.checkOffset(offset, arcSize);
-        resource.setOffset(offset);
-        offset += length + 4;
+        resources[i].setOffset(offset);
+        offset += lengths[i] + 4;
       }
 
       fm.close();

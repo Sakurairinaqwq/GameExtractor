@@ -15,6 +15,8 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
+import org.watto.datatype.Archive;
 import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -46,7 +48,8 @@ public class Plugin_CUB_CUB10 extends ArchivePlugin {
     setProperties(true, false, false, false);
 
     setGames("My Brother Rabbit",
-        "Vampire Legends: The True Story Of Kisilova");
+        "Vampire Legends: The True Story Of Kisilova",
+        "Abyss: The Wraiths of Eden");
     setExtensions("cub"); // MUST BE LOWER CASE
     setPlatforms("PC");
 
@@ -120,32 +123,77 @@ public class Plugin_CUB_CUB10 extends ArchivePlugin {
 
       // 4 - Number of Files
       int numFiles = fm.readInt();
-      FieldValidator.checkNumFiles(numFiles);
+      FieldValidator.checkNumFiles(numFiles + 1); // +1 to allow null
 
       // 256 - Description ("Paczka danych CUBE" + nulls to fill)
       fm.skip(256);
 
-      Resource[] resources = new Resource[numFiles];
-      TaskProgressManager.setMaximum(numFiles);
+      Resource[] resources = null;
+      if (numFiles == 0) {
+        // There is no directory, need to read through the whole archive
 
-      // Loop through directory
-      for (int i = 0; i < numFiles; i++) {
-        // 256 - Filename
-        String filename = fm.readNullString(256);
-        FieldValidator.checkFilename(filename);
+        fm.getBuffer().setBufferSize(264);
+        fm.seek(1);
+        fm.seek(268);
 
-        // 4 - File Offset
-        int offset = fm.readInt();
-        FieldValidator.checkOffset(offset, arcSize);
+        numFiles = Archive.getMaxFiles();
 
-        // 4 - File Length
-        int length = fm.readInt();
-        FieldValidator.checkLength(length, arcSize);
+        resources = new Resource[numFiles];
+        TaskProgressManager.setMaximum(arcSize);
 
-        //path,name,offset,length,decompLength,exporter
-        resources[i] = new Resource(path, filename, offset, length, length, exporter);
+        // Loop through directory
+        int realNumFiles = 0;
+        while (fm.getOffset() < arcSize - 256) {
+          //System.out.println(fm.getOffset());
+          // 256 - Filename
+          String filename = fm.readNullString(256);
+          FieldValidator.checkFilename(filename);
 
-        TaskProgressManager.setValue(i);
+          // 4 - File Offset
+          int offset = fm.readInt();
+          FieldValidator.checkOffset(offset, arcSize);
+
+          // 4 - File Length
+          int length = fm.readInt();
+          FieldValidator.checkLength(length, arcSize);
+
+          // X - File Data
+          fm.skip(length);
+
+          //path,name,offset,length,decompLength,exporter
+          resources[realNumFiles] = new Resource(path, filename, offset, length, length, exporter);
+          realNumFiles++;
+
+          TaskProgressManager.setValue(offset);
+        }
+
+        resources = resizeResources(resources, realNumFiles);
+      }
+      else {
+        // there is a directory, read it
+
+        resources = new Resource[numFiles];
+        TaskProgressManager.setMaximum(numFiles);
+
+        // Loop through directory
+        for (int i = 0; i < numFiles; i++) {
+          // 256 - Filename
+          String filename = fm.readNullString(256);
+          FieldValidator.checkFilename(filename);
+
+          // 4 - File Offset
+          int offset = fm.readInt();
+          FieldValidator.checkOffset(offset, arcSize);
+
+          // 4 - File Length
+          int length = fm.readInt();
+          FieldValidator.checkLength(length, arcSize);
+
+          //path,name,offset,length,decompLength,exporter
+          resources[i] = new Resource(path, filename, offset, length, length, exporter);
+
+          TaskProgressManager.setValue(i);
+        }
       }
 
       fm.close();

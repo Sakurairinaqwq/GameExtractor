@@ -1202,6 +1202,9 @@ public class Plugin_ASSETS_22 extends ArchivePlugin {
 
             // 4 - File Size
             int imageFileSize = fm.readInt();
+            if (imageFileSize < arcSize) {
+              forceExternal = false;
+            }
 
             // 4 - null
             fm.skip(4);

@@ -116,7 +116,7 @@ public class Plugin_DBS extends ArchivePlugin {
         return rating;
       }
       else if (FieldValidator.checkLength(nextPartLength, arcSize)) {
-        rating += 5;
+        //rating += 5;
       }
 
       return rating;

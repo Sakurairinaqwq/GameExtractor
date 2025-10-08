@@ -26,8 +26,9 @@ of compression algorithms.
   
 ## Installation and Build Prerequisites
 
-Game Extractor requires you to have Java Runtime Environment 8.0 (or 1.8) or later installed on
-your computer. This is a free download from http://www.java.com 
+Game Extractor requires you to have Java Runtime Environment 8.0 (or 1.8) installed on your
+computer. This is now included as part of the software installation, however if you want to
+download a later version yourself, you can get it from from http://www.java.com 
 
 If you are using Java version 11 or newer, we have included the JavaFX libraries which should be
 suitable for most Windows users. There is a new executable *GameExtractor_javafx.exe* to force
@@ -73,9 +74,15 @@ There is a Contact Form on our website, if you need to contact us for any furthe
 
 ## Version History
 
+* Version 3.16.0003
+  * [I] Small incremental version, with the intention of primarily adding more supported games.
+  * [+] Have now added a local Windows 32-bit JRE 1.8 which still includes JavaFX
+  * [B] Using a repeating XOR key for extracting files will now reset the key to the right position
+        whenever the file is next opened.
+
 * Version 3.16.0002
   * [I] Small incremental version, with the intention of primarily adding more supported games.
-  * [A] Have now added JavaFX libraries and a separate executable, for running on PCs with Java 11+
+  * [+] Have now added JavaFX libraries and a separate executable, for running on PCs with Java 11+
   * [B] DXT3 images now display with their alpha channel
 
 * Version 3.16.0001

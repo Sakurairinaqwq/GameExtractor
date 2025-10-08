@@ -1,0 +1,2 @@
+https://www.azul.com/downloads/?version=java-8-lts&architecture=x86-32-bit&package=jre-fx#zulu
+zulu8.88.0.19-ca-fx-jre8.0.462-win_i686

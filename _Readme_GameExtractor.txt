@@ -27,37 +27,37 @@ For further information, downloads, and help, visit the website at https://www.w
 //                                                                                            //
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-Game Extractor requires you to have Java Runtime Environment 8.0 (or 1.8) or later installed on
-your computer. This is a free download from http://www.java.com 
+Game Extractor requires you to have Java Runtime Environment 8.0 (or 1.8) installed on your
+computer. This is now included as part of the software installation, however if you want to
+download a later version yourself, you can get it from from http://www.java.com 
 
-If you are using Java version 10 or newer, you will need to install the JavaFX libraries as well,
-as they are no longer part of the Java installation. These are available from https://openjfx.io/
-and will need to be put in the main Game Extractor directory.
+If you are using Java version 11 or newer, we have included the JavaFX libraries which should be
+suitable for most Windows users. There is a new executable "GameExtractor_javafx.exe" to force
+the use of the included JavaFX libraries.
 
 When you install Game Extractor, several shortcuts are created in the Start Menu or the main
 Windows tile screen. If one of the shortcuts doesn't work for you, try one of the other ones.
 More detailed instructions can be found below, or on the Game Extractor website.
 
                                  Preferred Windows Method
-1. Install Java Runtime Environment 8.0 (or 1.8), or later, from http://www.java.com
-2. Download the Game Extractor EXE installer from https://www.watto.org/extract to your computer
-3. Double-click on GameExtractor.exe to run the installation program
-4. Double-click on any one of the following programs to run Game Extractor...
+1. Download the Game Extractor EXE installer from https://www.watto.org/extract to your computer
+2. Double-click on GameExtractor.exe to run the installation program
+3. Double-click on any one of the following programs, in the directory where you installed Game
+   Extractor, to run the program...
    a. GameExtractor.exe
    b. GameExtractor.bat
    c. GameExtractor.jar
    d. GameExtractor.ps1
 
                                 Alternative Windows Method
-1. Install Java Runtime Environment 8.0 (or 1.8), or later, from http://www.java.com
-2. Download the Game Extractor ZIP archive from https://www.watto.org/extract to your computer
-3. Right-click on the Game Extractor ZIP and choose Extract
-4. Follow the screens, and tell it to extract the file to c:\extract
-5. Open a Command Prompt window (you can search for it in the Start Menu or Windows Tile screen)
-6. Change to the Game Extractor directory by typing "cd c:\extract"
-7a. Run Game Extractor by typing "java -jar GameExtractor.jar"
-7b. If that doesn't work, try typing "c:\java\bin\java -jar GameExtractor.jar"
-8. If none of that works, run Windows Explorer and double-click any of the following files
+1. Download the Game Extractor ZIP archive from https://www.watto.org/extract to your computer
+2. Right-click on the Game Extractor ZIP and choose Extract
+3. Follow the screens, and tell it to extract the file to c:\extract
+4. Open a Command Prompt window (you can search for it in the Start Menu or Windows Tile screen)
+5. Change to the Game Extractor directory by typing "cd c:\extract"
+6a. Run Game Extractor by typing "java -jar GameExtractor.jar"
+6b. If that doesn't work, try typing "c:\java\bin\java -jar GameExtractor.jar"
+7. If none of that works, run Windows Explorer and double-click any of the following files
    in the c:\extract directory...
       a. GameExtractor.exe
       b. GameExtractor.bat
@@ -116,9 +116,15 @@ website as well.
 //                                                                                            //
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+Version 3.16.0003
+[I] Small incremental version, with the intention of primarily adding more supported games.
+[+] Have now added a local Windows 32-bit JRE 1.8 which still includes JavaFX
+[B] Using a repeating XOR key for extracting files will now reset the key to the right position
+    whenever the file is next opened.
+
 Version 3.16.0002
 [I] Small incremental version, with the intention of primarily adding more supported games.
-[A] Have now added JavaFX libraries and a separate executable, for running on PCs with Java 11+
+[+] Have now added JavaFX libraries and a separate executable, for running on PCs with Java 11+
 [B] DXT3 images now display with their alpha channel
 
 Version 3.16.0001
