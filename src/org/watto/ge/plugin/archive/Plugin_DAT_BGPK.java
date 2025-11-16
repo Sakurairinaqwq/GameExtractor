@@ -21,6 +21,8 @@ import org.watto.datatype.Archive;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
+import org.watto.ge.plugin.ExporterPlugin;
+import org.watto.ge.plugin.exporter.Exporter_ZLib;
 import org.watto.io.FileManipulator;
 import org.watto.task.TaskProgressManager;
 
@@ -113,7 +115,7 @@ public class Plugin_DAT_BGPK extends ArchivePlugin {
 
       addFileTypes();
 
-      //ExporterPlugin exporter = Exporter_ZLib.getInstance();
+      ExporterPlugin exporter = Exporter_ZLib.getInstance();
 
       // RESETTING GLOBAL VARIABLES
 
@@ -174,17 +176,38 @@ public class Plugin_DAT_BGPK extends ArchivePlugin {
           int offset = fm.readInt() + relativeOffset;
           FieldValidator.checkOffset(offset, arcSize);
 
-          // 4 - File Length
+          // 4 - Compressed File Length
           int length = fm.readInt();
           FieldValidator.checkLength(length, arcSize);
 
-          // 4 - File Length
-          // 1 - null
-          fm.skip(5);
+          // 4 - Decompressed File Length
+          int decompLength = fm.readInt();
+          FieldValidator.checkLength(decompLength);
 
-          //path,name,offset,length,decompLength,exporter
-          resources[realNumFiles] = new Resource(path, filename, offset, length);
-          realNumFiles++;
+          // 1 - Compression Type? (0=uncompressed, 4=ZLib)
+          int compressionType = fm.readByte();
+
+          if (compressionType == 4) {
+            // ZLib
+
+            //path,name,offset,length,decompLength,exporter
+            resources[realNumFiles] = new Resource(path, filename, offset, length, decompLength, exporter);
+            realNumFiles++;
+          }
+          else if (compressionType == 0) {
+            // None
+
+            //path,name,offset,length,decompLength,exporter
+            resources[realNumFiles] = new Resource(path, filename, offset, length);
+            realNumFiles++;
+          }
+          else {
+            ErrorLogger.log("[DAT_BGPK] Unknown compression type: " + compressionType);
+
+            //path,name,offset,length,decompLength,exporter
+            resources[realNumFiles] = new Resource(path, filename, offset, length);
+            realNumFiles++;
+          }
 
           TaskProgressManager.setValue(offset);
         }

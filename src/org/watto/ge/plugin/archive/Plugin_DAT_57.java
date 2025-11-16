@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2020 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -71,13 +71,20 @@ public class Plugin_DAT_57 extends ArchivePlugin {
       }
 
       // 4 - Number of Files
-      if (FieldValidator.checkNumFiles(fm.readInt())) {
+      int numFiles = fm.readInt();
+      if (FieldValidator.checkNumFiles(numFiles)) {
         rating += 5;
       }
 
       // 28 - null
       if (fm.readLong() == 0 && fm.readLong() == 0 && fm.readLong() == 0 && fm.readInt() == 0) {
         rating += 50;
+      }
+
+      fm.skip(256);
+
+      if (fm.readInt() == ((numFiles * 288) + 32)) {
+        rating += 25;
       }
 
       return rating;
@@ -121,7 +128,10 @@ public class Plugin_DAT_57 extends ArchivePlugin {
       TaskProgressManager.setMaximum(numFiles);
 
       // Loop through directory
+      int realNumFiles = 0;
       for (int i = 0; i < numFiles; i++) {
+        //System.out.println(fm.getOffset());
+
         // 256 - Filename (null terminated, filled with junk)
         String filename = fm.readNullString(256);
 
@@ -134,6 +144,13 @@ public class Plugin_DAT_57 extends ArchivePlugin {
 
         // 4 - File Offset
         int offset = fm.readInt();
+
+        if (offset == -842150451) {
+          // empty entry
+          fm.skip(28);
+          continue;
+        }
+
         FieldValidator.checkOffset(offset, arcSize);
 
         if (offset == 0) {
@@ -151,9 +168,14 @@ public class Plugin_DAT_57 extends ArchivePlugin {
         fm.skip(20);
 
         //path,name,offset,length,decompLength,exporter
-        resources[i] = new Resource(path, filename, offset, length);
+        resources[realNumFiles] = new Resource(path, filename, offset, length);
+        realNumFiles++;
 
         TaskProgressManager.setValue(i);
+      }
+
+      if (numFiles != realNumFiles) {
+        resources = resizeResources(resources, realNumFiles);
       }
 
       fm.close();

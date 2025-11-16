@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2021 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -16,12 +16,16 @@ package org.watto.ge.plugin.archive;
 
 import java.io.File;
 import java.util.Arrays;
-import org.watto.datatype.ReplacableResource;
+import java.util.HashMap;
+
+import org.watto.datatype.FileType;
+import org.watto.datatype.Palette;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
-import org.watto.ge.helper.ResourceSorter_Offset;
+import org.watto.ge.helper.PaletteManager;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.io.FileManipulator;
+import org.watto.io.converter.ByteConverter;
 import org.watto.task.TaskProgressManager;
 
 /**
@@ -42,13 +46,14 @@ public class Plugin_SHP_110 extends ArchivePlugin {
 
     //         read write replace rename
     setProperties(true, false, false, false);
-    setCanImplicitReplace(true);
 
     setExtensions("shp");
     setGames("Panzer General",
         "Steel Panthers 2",
         "Steel Panthers 3");
     setPlatforms("PC");
+
+    setFileTypes(new FileType("shp_tex", "SHP Image", FileType.TYPE_IMAGE));
 
   }
 
@@ -101,7 +106,7 @@ public class Plugin_SHP_110 extends ArchivePlugin {
       // 4 - Version (1.10) - read as string
       fm.skip(4);
 
-      // 4 - numFiles
+      // 4 - Number of Images
       int numFiles = fm.readInt();
       FieldValidator.checkNumFiles(numFiles);
 
@@ -110,37 +115,84 @@ public class Plugin_SHP_110 extends ArchivePlugin {
       Resource[] resources = new Resource[numFiles];
       TaskProgressManager.setMaximum(numFiles);
 
-      ResourceSorter_Offset[] sorter = new ResourceSorter_Offset[numFiles]; // for calculating the file lengths
+      int[] offsets = new int[(numFiles * 2) + 1]; // *2 to store the palette offsets as well (which can be scattered throughout the archive), +1 to store the first palette offset in the last entry, so we can calculate the sizes of the images
+      int numOffsets = 0;
       for (int i = 0; i < numFiles; i++) {
-        // 4 - offset
-        long offsetPointerLocation = fm.getOffset();
-        long offsetPointerLength = 4;
-
-        long offset = fm.readInt();
+        // 4 - File Offset
+        int offset = fm.readInt();
         FieldValidator.checkOffset(offset, arcSize);
 
-        // 4 - ID? type?
-        fm.skip(4);
+        // 4 - Palette Offset
+        int paletteOffset = fm.readInt();
+        FieldValidator.checkOffset(paletteOffset, arcSize);
 
-        String filename = Resource.generateFilename(i) + ".shpimg";
+        offsets[numOffsets++] = offset;
+        offsets[numOffsets++] = paletteOffset;
+
+        String filename = Resource.generateFilename(i) + ".shp_tex";
 
         //path,id,name,offset,length,decompLength,exporter
-        Resource resource = new ReplacableResource(path, filename, offset, offsetPointerLocation, offsetPointerLength);
+        Resource resource = new Resource(path, filename, offset);
+        resource.addProperty("PaletteOffset", paletteOffset);
         resources[i] = resource;
-
-        sorter[i] = new ResourceSorter_Offset(resource);
 
         TaskProgressManager.setValue(i);
       }
 
-      // Calculate File Sizes
-      Arrays.sort(sorter);
+      // store the arcSize so we can calculate all the lengths without a funny loop
+      offsets[numOffsets] = (int) arcSize;
 
-      for (int j = 0; j < numFiles - 1; j++) {
-        sorter[j].getResource().setLength((int) (sorter[j + 1].getResource().getOffset() - sorter[j].getResource().getOffset()));
-        FieldValidator.checkLength(sorter[j].getResource().getLength(), arcSize);
+      // Calculate File Sizes
+      Arrays.sort(offsets);
+
+      HashMap<Integer, Integer> lengthMap = new HashMap<Integer, Integer>(numFiles);
+
+      for (int i = 0; i < numOffsets; i++) {
+        int thisOffset = offsets[i];
+        int length = offsets[i + 1] - thisOffset;
+        //System.out.println(thisOffset + "        IN ");
+        lengthMap.put(thisOffset, length);
       }
-      sorter[numFiles - 1].getResource().setLength((int) (arcSize - sorter[numFiles - 1].getResource().getOffset()));
+
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+        //System.out.println(resource.getOffset() + " OUT ");
+        int length = lengthMap.get((int) resource.getOffset());
+        resource.setLength(length);
+        resource.setDecompressedLength(length);
+      }
+
+      // now go through and load all the palettes, ready for previews
+      PaletteManager.clear();
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+        int paletteOffset = Integer.parseInt(resource.getProperty("PaletteOffset"));
+        fm.seek(paletteOffset);
+
+        // 4 - Number of Colors
+        int numColors = fm.readInt();
+        FieldValidator.checkNumColors(numColors);
+
+        // Palette
+        int[] palette = new int[256];
+        for (int c = 0; c < numColors; c++) {
+          // 1 - Palette Index
+          int index = ByteConverter.unsign(fm.readByte());
+
+          // 1 - Red
+          // 1 - Green
+          // 1 - Blue
+          int r = ByteConverter.unsign(fm.readByte()) * 4;
+          int g = ByteConverter.unsign(fm.readByte()) * 4;
+          int b = ByteConverter.unsign(fm.readByte()) * 4;
+
+          // OUTPUT = ARGB
+          palette[index] = ((r << 16) | (g << 8) | b | (255 << 24));
+        }
+
+        PaletteManager.addPalette(new Palette(palette));
+        resource.addProperty("PaletteID", i);
+      }
 
       fm.close();
 

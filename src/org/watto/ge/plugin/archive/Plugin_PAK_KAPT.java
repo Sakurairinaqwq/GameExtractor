@@ -105,7 +105,8 @@ public class Plugin_PAK_KAPT extends ArchivePlugin {
 
       return rating;
 
-    } catch (Throwable t) {
+    }
+    catch (Throwable t) {
       return 0;
     }
   }
@@ -165,6 +166,9 @@ public class Plugin_PAK_KAPT extends ArchivePlugin {
       for (int b = 0; b < decompDirLength; b++) {
         if (exporterZLibX.available()) { // make sure we read the next bit of data, if required
           decompNameDirBytes[decompNameWritePos++] = (byte) exporterZLibX.read();
+        }
+        else {
+          break;
         }
       }
 
@@ -453,10 +457,12 @@ public class Plugin_PAK_KAPT extends ArchivePlugin {
         if (compFlag == 0) {
           // path,name,offset,length,decompLength,exporter
           resources[i] = new Resource(path, filename, offset, length);
-        } else if (compFlag == 1) {
+        }
+        else if (compFlag == 1) {
           // path,name,offset,length,decompLength,exporter
           resources[i] = new Resource(path, filename, offset, length, decompLength, exporter);
-        } else {
+        }
+        else {
           ErrorLogger.log("[PAK_KAPT] Unknown Compression Flag: " + compFlag);
         }
 
@@ -469,7 +475,8 @@ public class Plugin_PAK_KAPT extends ArchivePlugin {
 
       return resources;
 
-    } catch (Throwable t) {
+    }
+    catch (Throwable t) {
       logError(t);
       return null;
     }

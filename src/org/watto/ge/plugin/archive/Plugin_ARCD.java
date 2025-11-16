@@ -15,11 +15,12 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ExporterPlugin;
-import org.watto.ge.plugin.exporter.Exporter_LZ4;
+import org.watto.ge.plugin.exporter.Exporter_QuickBMS_DLL;
 import org.watto.io.FileManipulator;
 import org.watto.io.converter.IntConverter;
 import org.watto.task.TaskProgressManager;
@@ -98,7 +99,8 @@ public class Plugin_ARCD extends ArchivePlugin {
       addFileTypes();
 
       //ExporterPlugin exporter = Exporter_Custom_LZ77EA_970.getInstance();
-      ExporterPlugin exporter = Exporter_LZ4.getInstance();
+      //ExporterPlugin exporter = Exporter_LZ4.getInstance();
+      ExporterPlugin exporter = new Exporter_QuickBMS_DLL("LZ77EA_970");
 
       // RESETTING GLOBAL VARIABLES
 
@@ -188,6 +190,18 @@ public class Plugin_ARCD extends ArchivePlugin {
   public String guessFileExtension(Resource resource, byte[] headerBytes, int headerInt1, int headerInt2, int headerInt3, short headerShort1, short headerShort2, short headerShort3, short headerShort4, short headerShort5, short headerShort6) {
 
     if (headerShort1 == 11565) {
+      return "txt";
+    }
+
+    int headerLength = headerBytes.length;
+    boolean ascii = true;
+    for (int i = 0; i < headerLength; i++) {
+      if (headerBytes[i] < 9 && headerBytes[i] != 0) {
+        ascii = false;
+        break;
+      }
+    }
+    if (ascii) {
       return "txt";
     }
 

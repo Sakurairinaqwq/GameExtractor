@@ -20,10 +20,10 @@ import org.watto.component.PreviewPanel_Image;
 import org.watto.datatype.Archive;
 import org.watto.datatype.ImageResource;
 import org.watto.ge.helper.FieldValidator;
-import org.watto.ge.helper.ImageFormatReader;
 import org.watto.ge.plugin.AllFilesPlugin;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ViewerPlugin;
+import org.watto.ge.plugin.archive.Plugin_DAT_112;
 import org.watto.io.FileManipulator;
 import org.watto.io.buffer.ByteBuffer;
 import org.watto.io.converter.ByteConverter;
@@ -83,8 +83,17 @@ public class Viewer_FLC extends ViewerPlugin {
       int rating = 0;
 
       ArchivePlugin plugin = Archive.getReadPlugin();
-      if (!(plugin instanceof AllFilesPlugin)) {
+      if (plugin instanceof Plugin_DAT_112) {
+        rating += 25;
+      }
+      /*
+      // REMOVED, so that we can view FLC files in any plugin
+      else if (!(plugin instanceof AllFilesPlugin)) {
         return 0;
+      }
+      */
+      else if (plugin instanceof AllFilesPlugin) {
+        rating += 25;
       }
 
       if (FieldValidator.checkExtension(fm, extensions)) {
@@ -161,6 +170,8 @@ public class Viewer_FLC extends ViewerPlugin {
       }
       FieldValidator.checkRange(speed, 1, 5000);
 
+      speed *= 2; // make it a bit slower
+
       // 2 - null
       // 4 - Creation Date
       // 4 - Creator ID
@@ -216,7 +227,8 @@ public class Viewer_FLC extends ViewerPlugin {
           // 2 - Number of Sub-Chunks
           int numSubChunks = ShortConverter.unsign(fm.readShort());
 
-          // 8 - null
+          // 2 - Delay
+          // 6 - null
           fm.skip(8);
 
           //System.out.println("  Found Frame number " + currentFrame + " with " + numSubChunks + " subchunks");
@@ -251,7 +263,26 @@ public class Viewer_FLC extends ViewerPlugin {
                   // 2 - null
                   fm.skip(4);
 
-                  palette = ImageFormatReader.readPaletteRGB(fm, 256);
+                  //palette = ImageFormatReader.readPaletteRGB(fm, 256);
+                  int colorCount = 256;
+                  palette = new int[colorCount];
+
+                  for (int p = 0; p < colorCount; p++) {
+                    // INPUT = RGB
+                    // OUTPUT = ARGB
+                    int r = ByteConverter.unsign(fm.readByte());
+                    int g = ByteConverter.unsign(fm.readByte());
+                    int b = ByteConverter.unsign(fm.readByte());
+
+                    // Specifically for game "Skipper and Skeeto - The Great Treasure Hunt" which uses Green as the transparent color, but doesn't write it in to the FLC file
+                    if (r == 0 && g == 255 && b == 0) {
+                      palette[p] = 0;
+                    }
+                    else {
+                      palette[p] = ((r << 16) | (g << 8) | b | (255 << 24));
+                    }
+
+                  }
 
                   break;
                 }
@@ -290,7 +321,27 @@ public class Viewer_FLC extends ViewerPlugin {
               // 2 - null
               fm.skip(4);
 
-              palette = ImageFormatReader.readPaletteRGB(fm, 256);
+              //palette = ImageFormatReader.readPaletteRGB(fm, 256);
+              int colorCount = 256;
+              palette = new int[colorCount];
+
+              for (int p = 0; p < colorCount; p++) {
+                // INPUT = RGB
+                // OUTPUT = ARGB
+                int r = ByteConverter.unsign(fm.readByte());
+                int g = ByteConverter.unsign(fm.readByte());
+                int b = ByteConverter.unsign(fm.readByte());
+
+                // Specifically for game "Skipper and Skeeto - The Great Treasure Hunt" which uses Green as the transparent color, but doesn't write it in to the FLC file
+                if (r == 0 && g == 255 && b == 0) {
+                  palette[p] = 0;
+                }
+                else {
+                  palette[p] = ((r << 16) | (g << 8) | b | (255 << 24));
+                }
+
+              }
+
             }
             else if (chunkType == 15) {
               // RLE-encoded pixels
@@ -665,7 +716,26 @@ public class Viewer_FLC extends ViewerPlugin {
               chunkLength -= 10;
 
               if (chunkLength == 768) {
-                palette = ImageFormatReader.readPaletteRGB(fm, 256);
+                //palette = ImageFormatReader.readPaletteRGB(fm, 256);
+                int colorCount = 256;
+                palette = new int[colorCount];
+
+                for (int p = 0; p < colorCount; p++) {
+                  // INPUT = RGB
+                  // OUTPUT = ARGB
+                  int r = ByteConverter.unsign(fm.readByte());
+                  int g = ByteConverter.unsign(fm.readByte());
+                  int b = ByteConverter.unsign(fm.readByte());
+
+                  // Specifically for game "Skipper and Skeeto - The Great Treasure Hunt" which uses Green as the transparent color, but doesn't write it in to the FLC file
+                  if (r == 0 && g == 255 && b == 0) {
+                    palette[p] = 0;
+                  }
+                  else {
+                    palette[p] = ((r << 16) | (g << 8) | b | (255 << 24));
+                  }
+
+                }
               }
               else {
                 ErrorLogger.log("[Viewer_FLC] Unsupported palette length: " + chunkLength);

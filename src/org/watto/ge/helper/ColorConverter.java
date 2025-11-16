@@ -33,6 +33,9 @@ public class ColorConverter {
   **********************************************************************************************
   **/
   public static void changeColorCountRGB(ImageManipulator resource, int newNumColors) {
+    if (resource.getNumColors() <= newNumColors) {
+      return; //  already have the right number of colors
+    }
     Quantize q = new Quantize(newNumColors);
     int[][] pixelsAs2D = new int[1][0];
     pixelsAs2D[0] = resource.getImagePixels();

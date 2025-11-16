@@ -66,6 +66,7 @@ import javax.swing.JFrame;
 - Image Viewer (example WRITE code) - Viewer_XAF_XAF_STX
 - Image Viewer (example REPLACE code) - Viewer_REZ_REZMGR_DTX (also need to refer to Plugin_REZ_REZMGR to see where replace() is called)
 - Image Viewer where the user is shown a message if the palette couldn't be loaded - Viewer_GLB_GLB2_GLBTEX
+- Image Writer (animation) - Viewer_GIF_Writer_Animation
 - Audio Viewer where raw audio is read from a file, a WAV header is prepended, and it's played as an ordinary WAV file - Viewer_A00_MEL
 - 3D Model Viewer - VPK_VPK_VMESHC or Viewer_Unity3D_MESH or Viewer_POD_BIN or Viewer_BMOD_OMOD_OBST
 - 3D Model Viewer with Textures and multiple Mesh Groups - Viewer_GTC_MD2_MDL3
@@ -430,7 +431,7 @@ public class GameExtractor extends WSProgram implements WSClickableInterface,
   **********************************************************************************************
   **/
   public static boolean isFullVersion() {
-      return false;
+    return false;
   }
 
   /**

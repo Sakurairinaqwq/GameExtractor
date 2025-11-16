@@ -349,7 +349,7 @@ public class SidePanel_Preview extends WSPanelPlugin implements WSSelectableInte
       String code = ((WSComponent) c).getCode();
 
       if (code.equals("FileList")) {
-        loadBasicVersionPreview();
+          loadBasicVersionPreview();
         return true;
       }
 
@@ -402,7 +402,7 @@ public class SidePanel_Preview extends WSPanelPlugin implements WSSelectableInte
    **/
   @Override
   public void onOpenRequest() {
-    loadBasicVersionPreview();
+      loadBasicVersionPreview();
   }
 
   /**
@@ -665,7 +665,11 @@ public class SidePanel_Preview extends WSPanelPlugin implements WSSelectableInte
 
     // If there are multiple frames in the image, and it's a manual transition (not an animation), we want to save each frame [3.13]
     boolean previewsWritten = false;
-    if (previewPanel instanceof PreviewPanel_Image) {
+    if (plugin.canWriteAnimation()) {
+      // Just write out the animation to a single image, we don't want to write out each frame individually [3.16.0004]
+      // The actual write occurs down further, this is just to stop it entering the next else-if.
+    }
+    else if (previewPanel instanceof PreviewPanel_Image) {
       PreviewPanel_Image imagePanel = (PreviewPanel_Image) previewPanel;
       ImageResource imageResource = imagePanel.getImageResource();
       if (imageResource.getNextFrame() != null) {
@@ -714,7 +718,9 @@ public class SidePanel_Preview extends WSPanelPlugin implements WSSelectableInte
         //}
       }
     }
+
     // Otherwise just save the current frame
+    // (or, if the plugin can write animation files, this will write a single file with the animation in it) [3.16.0004]
     if (!previewsWritten) {
       plugin.write(previewPanel, destination);
       previewsWritten = true;

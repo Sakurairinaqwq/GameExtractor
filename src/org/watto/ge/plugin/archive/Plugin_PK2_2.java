@@ -15,6 +15,7 @@ package org.watto.ge.plugin.archive;
 
 import java.io.File;
 
+import org.watto.Language;
 import org.watto.datatype.Archive;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
@@ -39,7 +40,7 @@ public class Plugin_PK2_2 extends ArchivePlugin {
     super("PK2_2", "PK2_2");
 
     //         read write replace rename
-    setProperties(true, false, false, false);
+    setProperties(true, true, false, true);
 
     setGames("Indiana Jones and the Emperors Tomb");
     setExtensions("pk2");
@@ -146,6 +147,83 @@ public class Plugin_PK2_2 extends ArchivePlugin {
     catch (Throwable t) {
       logError(t);
       return null;
+    }
+
+  }
+
+  /**
+   **********************************************************************************************
+   * Writes an [archive] File with the contents of the Resources
+   **********************************************************************************************
+   **/
+  @Override
+  public void write(Resource[] resources, File path) {
+    try {
+
+      int numFiles = resources.length;
+      TaskProgressManager.setMaximum(numFiles);
+
+      // WRITE THE FILE THAT CONTAINS THE DIRECTORY
+      File dirPath = getDirectoryFile(path, "hsh", false);
+      FileManipulator fm = new FileManipulator(dirPath, true);
+
+      // Write Directory
+      TaskProgressManager.setMessage(Language.get("Progress_WritingDirectory"));
+      long offset = 0;
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+        long decompLength = resource.getDecompressedLength();
+
+        // X - Filename (String)
+        fm.writeString(resource.getName());
+
+        // 1 - Filename Terminator (byte 32)
+        fm.writeByte(32);
+
+        // X - File Length (String)
+        fm.writeString("" + decompLength);
+
+        // 1 - File Length Terminator (byte 32)
+        fm.writeByte(32);
+
+        // X - File Offset (String)
+        fm.writeString("" + offset);
+
+        // 2 - New Line Characters (13,10)
+        fm.writeByte(13);
+        fm.writeByte(10);
+
+        offset += decompLength;
+        offset += calculatePadding(decompLength, 2048);
+      }
+
+      fm.close();
+
+      // WRITE THE FILE THAT CONTAINS THE DATA
+      fm = new FileManipulator(path, true);
+
+      // Write Files
+      TaskProgressManager.setMessage(Language.get("Progress_WritingFiles"));
+      for (int i = 0; i < numFiles; i++) {
+        Resource resource = resources[i];
+
+        // X - File Data
+        write(resource, fm);
+
+        // 0-2047 - null Padding to a multiple of 2048 bytes
+        int padding = calculatePadding(resource.getDecompressedLength(), 2048);
+        for (int p = 0; p < padding; p++) {
+          fm.writeByte(0);
+        }
+
+        TaskProgressManager.setValue(i);
+      }
+
+      fm.close();
+
+    }
+    catch (Throwable t) {
+      logError(t);
     }
   }
 

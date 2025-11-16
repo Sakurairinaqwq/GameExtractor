@@ -15,6 +15,7 @@
 package org.watto.ge.plugin.exporter;
 
 import java.io.IOException;
+
 import org.apache.commons.compress.compressors.snappy.SnappyCompressorInputStream;
 import org.apache.commons.compress.compressors.snappy.SnappyCompressorOutputStream;
 import org.watto.datatype.Resource;
@@ -33,7 +34,7 @@ public class Exporter_Snappy extends ExporterPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public static Exporter_Snappy getInstance() {
@@ -44,7 +45,7 @@ public class Exporter_Snappy extends ExporterPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   public Exporter_Snappy() {
@@ -53,7 +54,7 @@ public class Exporter_Snappy extends ExporterPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -77,7 +78,7 @@ public class Exporter_Snappy extends ExporterPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -94,7 +95,7 @@ public class Exporter_Snappy extends ExporterPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override
@@ -112,7 +113,23 @@ public class Exporter_Snappy extends ExporterPlugin {
 
   /**
   **********************************************************************************************
+  So we can easily call this from within a Viewer plugin
+  **********************************************************************************************
+  **/
+  public void open(FileManipulator fmIn, int compLengthIn, int decompLengthIn) {
+    try {
+      fm = fmIn;
 
+      readSource = new SnappyCompressorInputStream(new ManipulatorInputStream(fm));
+      readLength = decompLengthIn;
+    }
+    catch (Throwable t) {
+    }
+  }
+
+  /**
+  **********************************************************************************************
+  
   **********************************************************************************************
   **/
   @Override
@@ -147,7 +164,7 @@ public class Exporter_Snappy extends ExporterPlugin {
 
   /**
   **********************************************************************************************
-
+  
   **********************************************************************************************
   **/
   @Override

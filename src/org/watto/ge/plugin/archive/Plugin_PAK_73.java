@@ -16,11 +16,16 @@ package org.watto.ge.plugin.archive;
 
 import java.io.File;
 
+import org.watto.ErrorLogger;
+import org.watto.Language;
+import org.watto.Settings;
+import org.watto.component.PreviewPanel;
 import org.watto.datatype.Archive;
 import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
+import org.watto.ge.plugin.viewer.Viewer_PAK_73_MT2;
 import org.watto.io.FileManipulator;
 import org.watto.io.FilenameSplitter;
 import org.watto.task.TaskProgressManager;
@@ -42,7 +47,7 @@ public class Plugin_PAK_73 extends ArchivePlugin {
     super("PAK_73", "PAK_73");
 
     //         read write replace rename
-    setProperties(true, false, false, false);
+    setProperties(true, false, true, false);
 
     setGames("Indiana Jones and the Emperors Tomb");
     setExtensions("pak"); // MUST BE LOWER CASE
@@ -55,6 +60,8 @@ public class Plugin_PAK_73 extends ArchivePlugin {
     setTextPreviewExtensions("csv", "tpr", "pin", "gin"); // LOWER CASE
 
     //setCanScanForFileTypes(true);
+
+    setCanConvertOnReplace(true);
 
   }
 
@@ -334,23 +341,278 @@ public class Plugin_PAK_73 extends ArchivePlugin {
   }
 
   /**
-  **********************************************************************************************
-  If an archive doesn't have filenames stored in it, the scanner can come here to try to work out
-  what kind of file a Resource is. This method allows the plugin to provide additional plugin-specific
-  extensions, which will be tried before any standard extensions.
-  @return null if no extension can be determined, or the extension if one can be found
-  **********************************************************************************************
-  **/
+   **********************************************************************************************
+   * Writes an [archive] File with the contents of the Resources. The archive is written using
+   * data from the initial archive - it isn't written from scratch.
+   **********************************************************************************************
+   **/
   @Override
-  public String guessFileExtension(Resource resource, byte[] headerBytes, int headerInt1, int headerInt2, int headerInt3, short headerShort1, short headerShort2, short headerShort3, short headerShort4, short headerShort5, short headerShort6) {
+  public void replace(Resource[] resources, File path) {
+    try {
 
-    /*
-    if (headerInt1 == 2037149520) {
-      return "js";
+      FileManipulator fm = new FileManipulator(path, true);
+      FileManipulator src = new FileManipulator(new File(Settings.getString("CurrentArchive")), false);
+
+      long srcSize = src.getLength();
+
+      int numFiles = resources.length;
+      TaskProgressManager.setMaximum(numFiles);
+
+      // Calculations
+      TaskProgressManager.setMessage(Language.get("Progress_PerformingCalculations"));
+
+      // Write Header Data
+
+      // 4 - Header (335913)
+      // 4 - Names Directory Length
+      // 4 - null
+      fm.writeBytes(src.readBytes(12));
+
+      // 4 - Names Directory Length
+      int nameDirLength = src.readInt();
+      fm.writeInt(nameDirLength);
+
+      // 4 - Unknown (4096)
+      fm.writeBytes(src.readBytes(4));
+
+      // 4 - Number of Names
+      int numNames = src.readInt();
+      fm.writeInt(numNames);
+
+      // for each name
+      //   4 - Name Offset (relative to the start of the Names Directory)
+      fm.writeBytes(src.readBytes(numNames * 4));
+
+      // NAMES DIRECTORY
+      fm.writeBytes(src.readBytes(nameDirLength));
+
+      // 4 - Unknown (256)
+      fm.writeBytes(src.readBytes(4));
+
+      // 4 - Number of Entries
+      int numEntries = src.readInt();
+      fm.writeInt(numEntries);
+
+      // for each entry
+      //   2 - Entry ID?
+      fm.writeBytes(src.readBytes(numEntries * 2));
+
+      // 4 - Unknown
+      // 4 - Unknown
+      fm.writeBytes(src.readBytes(8));
+
+      // 4 - Number of directories
+      int numDirectories = src.readInt();
+      fm.writeInt(numDirectories);
+
+      // for each directory
+      //   32 - Directory Name (null terminated, filled with nulls)
+      //   4 - Unknown
+      fm.writeBytes(src.readBytes(numDirectories * 36));
+
+      //
+      // Some long complicated structure to read and copy
+      //
+      int marker = src.readInt();
+      fm.writeInt(marker);
+      while (src.getOffset() < srcSize && marker != -1) {
+        FieldValidator.checkPositive(marker);
+
+        // 4 - File Type Name Length
+        int typeNameLength = src.readInt();
+        FieldValidator.checkFilenameLength(typeNameLength);
+        fm.writeInt(typeNameLength);
+
+        // X - File Type Name (mt2, sl2, ms2,...)
+        fm.writeBytes(src.readBytes(typeNameLength));
+
+        // 4 - Flags? (4/8)
+        fm.writeBytes(src.readBytes(4));
+
+        // 4 - Number of Sub-Folders
+
+        int numSubFolders = src.readInt();
+        FieldValidator.checkNumFiles(numSubFolders);
+        fm.writeInt(numSubFolders);
+
+        // for each sub-folder
+        for (int s = 0; s < numSubFolders; s++) {
+          // 4 - Sub-folder Name Length
+          int subFolderNameLength = src.readInt();
+          FieldValidator.checkFilenameLength(subFolderNameLength);
+          fm.writeInt(subFolderNameLength);
+
+          // X - Sub-folder Name
+          fm.writeBytes(src.readBytes(subFolderNameLength));
+        }
+
+        // 4 - Flags? (64/32/256/512/0)
+        fm.writeBytes(src.readBytes(4));
+
+        // 4 - Number of Files in this sub-folder (can be null)
+        int numFilesInSub = src.readInt();
+        FieldValidator.checkNumFiles(numFilesInSub + 1);//+1 to allow nulls
+        fm.writeInt(numFilesInSub);
+
+        // for each file in this sub-folder
+        for (int f = 0; f < numFilesInSub; f++) {
+          // 2 - Unknown
+          // 2 - Unknown
+          fm.writeBytes(src.readBytes(4));
+
+          // 4 - Count
+          int count = src.readInt();
+          FieldValidator.checkNumFiles(count);
+          fm.writeInt(count);
+
+          // for each count
+          // 2 - Unknown
+          // 4 - Unknown
+          // 2 - Unknown
+          // 4 - Unknown
+          fm.writeBytes(src.readBytes(count * 12));
+        }
+
+        // 4 - File Type ID Number? (or end of file marker == -1)
+        marker = src.readInt();
+        fm.writeInt(marker);
+
+      }
+
+      //
+      // Finally ready to write the files
+      //
+
+      // Write Directory
+      TaskProgressManager.setMessage(Language.get("Progress_WritingFiles"));
+      for (int i = 0; i < numFiles; i++) {
+        //System.out.println("in: " + src.getOffset() + "\tout: " + fm.getOffset());
+        Resource resource = resources[i];
+        long length = resource.getDecompressedLength();
+
+        long startOffset = src.getOffset();
+
+        // 4 - Unknown (1)
+        fm.writeBytes(src.readBytes(4));
+
+        // 4 - Offset of the Previous Field
+        src.skip(4);
+        fm.writeInt((fm.getOffset() - 4));
+
+        // 4 - File Length (including all these headers)
+        // 4 - File Length (File Data only)
+        int headerLength = src.readInt();
+        int fileLength = src.readInt();
+
+        long srcOffset = src.getOffset();
+
+        // some files don't have a FileDataOnly length, so need to work it out from the source...
+        if (fileLength == 0) {
+          // 4 - null
+          src.skip(4);
+
+          // 4 - Filename Length
+          int filenameLength = src.readInt();
+          FieldValidator.checkFilenameLength(filenameLength);
+
+          // X - Filename
+          src.skip(filenameLength);
+
+          // 4 - Name 2 Length (can be null)
+          int name2Length = src.readInt();
+          FieldValidator.checkFilenameLength(name2Length + 1);//+1 to allow for nulls
+
+          // X - Name 2
+          src.skip(name2Length);
+
+          // 4 - Name 3 Length (can be null)
+          int name3Length = src.readInt();
+          FieldValidator.checkFilenameLength(name3Length + 1);//+1 to allow for nulls
+
+          // X - Name 3
+          src.skip(name3Length);
+
+          // X - File Data
+          long offset = src.getOffset();
+
+          // work out the actual file length from the lengthWithHeaders field
+          fileLength = (int) (headerLength - (offset - startOffset));
+          src.relativeSeek(srcOffset);
+        }
+
+        headerLength -= fileLength;
+
+        fm.writeInt(length + headerLength);
+        fm.writeInt(length);
+
+        // 4 - null
+        // 4 - Filename Length
+        // X - Filename
+        // 4 - Name 2 Length (can be null)
+        // X - Name 2
+        // 4 - Name 3 Length (can be null)
+        // X - Name 3
+        fm.writeBytes(src.readBytes(headerLength - 16)); // we've already processed 16 of the header bytes
+
+        // X - File Data
+        src.skip(fileLength);
+        write(resource, fm);
+
+        TaskProgressManager.setValue(i);
+      }
+
+      // FOOTER
+      int remainingLength = (int) src.getRemainingLength();
+      fm.writeBytes(src.readBytes(remainingLength));
+
+      src.close();
+      fm.close();
+
     }
-    */
+    catch (Throwable t) {
+      logError(t);
+    }
+  }
 
-    return null;
+  /**
+   **********************************************************************************************
+   When replacing files, if the file is of a certain type, it will be converted before replace
+   @param resourceBeingReplaced the Resource in the archive that is being replaced
+   @param fileToReplaceWith the file on your PC that will replace the Resource. This file is the
+          one that will be converted into a different format, if applicable.
+   @return the converted file, if conversion was applicable/successful, else the original fileToReplaceWith
+   **********************************************************************************************
+   **/
+  @Override
+  public File convertOnReplace(Resource resourceBeingReplaced, File fileToReplaceWith) {
+    try {
+
+      PreviewPanel imagePreviewPanel = loadFileForConversion(resourceBeingReplaced, fileToReplaceWith, "mt2");
+      if (imagePreviewPanel == null) {
+        // no conversion needed, or wasn't able to be converted
+        return fileToReplaceWith;
+      }
+
+      // The plugin that will do the conversion
+      Viewer_PAK_73_MT2 converterPlugin = new Viewer_PAK_73_MT2();
+
+      String beingReplacedExtension = resourceBeingReplaced.getExtension();
+      File destination = new File(fileToReplaceWith.getAbsolutePath() + "." + beingReplacedExtension);
+      if (destination.exists()) {
+        destination.delete();
+      }
+
+      FileManipulator fmOut = new FileManipulator(destination, true);
+      converterPlugin.replace(resourceBeingReplaced, imagePreviewPanel, fmOut);
+      fmOut.close();
+
+      return destination;
+
+    }
+    catch (Throwable t) {
+      ErrorLogger.log(t);
+      return fileToReplaceWith;
+    }
   }
 
 }

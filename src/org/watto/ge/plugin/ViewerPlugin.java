@@ -15,6 +15,7 @@
 package org.watto.ge.plugin;
 
 import java.io.File;
+
 import org.watto.ErrorLogger;
 import org.watto.Language;
 import org.watto.component.PreviewPanel;
@@ -91,7 +92,7 @@ public abstract class ViewerPlugin extends WSObjectPlugin {
   **********************************************************************************************
   **/
   public abstract boolean canWrite(PreviewPanel panel);
-  
+
   /**
   **********************************************************************************************
   Can this plugin replace an existing file (using any missing/unknown information from the original file)?
@@ -100,7 +101,16 @@ public abstract class ViewerPlugin extends WSObjectPlugin {
   public boolean canReplace(PreviewPanel panel) {
     return false;
   }
-  
+
+  /**
+  **********************************************************************************************
+  Can this plugin write an animation? If so, we want to export a single animation file, not each frame.
+  **********************************************************************************************
+  **/
+  public boolean canWriteAnimation() {
+    return false;
+  }
+
   /**
   **********************************************************************************************
   Can this plugin edit an existing file?
@@ -338,8 +348,6 @@ public abstract class ViewerPlugin extends WSObjectPlugin {
       return null;
     }
   }
-  
-  
 
   /**
   **********************************************************************************************
@@ -411,14 +419,14 @@ public abstract class ViewerPlugin extends WSObjectPlugin {
       ErrorLogger.log(t);
     }
   }
-  
+
   /**
   **********************************************************************************************
   
   **********************************************************************************************
   **/
   public void edit(FileManipulator originalFM, PreviewPanel panel, FileManipulator destination) {
-    write(panel,destination);
+    write(panel, destination);
   }
 
   /**

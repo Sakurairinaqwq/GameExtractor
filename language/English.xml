@@ -723,7 +723,7 @@
 		<lang code="WSLabel_DecompressArchive_Text" value="Archive needs to be decompressed before analysis." />
 		<lang code="WSLabel_Options_OptionsSaved_Text" value="The options were saved." />
 		<lang code="WSLabel_PluginListDisplayType_Text" value="Plugin List Display" />
-		<lang code="WSLabel_Preview_PreviewSaved_Text" value="The preview was saved successfully." />
+		<lang code="WSLabel_Preview_PreviewSaved_Text" value="The preview was saved successfully to the Previews directory." />
 		<lang code="WSLabel_ReadArchive_ArchiveOpenedWithScanner_Text" value="The scanner has opened the archive successfully." />
 		<lang code="WSLabel_ReadArchive_ArchiveOpened_Text" value="The archive was opened successfully." />
 		<lang code="WSLabel_ReadArchive_FileNotAnArchive_Text" value="The selected file is not an archive." />

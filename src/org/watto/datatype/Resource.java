@@ -17,7 +17,9 @@ package org.watto.datatype;
 import java.awt.Image;
 import java.io.File;
 import java.io.OutputStream;
+
 import javax.swing.Icon;
+
 import org.watto.ErrorLogger;
 import org.watto.TemporarySettings;
 import org.watto.ge.plugin.ArchivePlugin;
@@ -47,17 +49,17 @@ public class Resource implements Comparable<Resource> {
     if (exportedPath == null || exportedPathTimestamp == -1 || !exportedPath.exists()) {
       return false;
     }
-    
+
     long exportedPathModified = exportedPath.lastModified();
     long difference = exportedPathModified - exportedPathTimestamp;
     if (difference < 0) {
-      difference = 0-difference;
+      difference = 0 - difference;
     }
-    
+
     if (difference < 1000) { // a tolerance of 1-second - it's highly unlikely that the file would be exported and modified within 1 second
       return false;
     }
-    
+
     return true;
   }
 
@@ -345,6 +347,8 @@ public class Resource implements Comparable<Resource> {
       }
 
       destination = FilenameChecker.correctFilename(destination, '_');
+
+      //System.out.println(destination);
 
       if (destination.exists() && destination.isFile()) {
         // to cater for archives with multiple files of the same name, append a number to the end of the name
@@ -772,7 +776,7 @@ public class Resource implements Comparable<Resource> {
 
     ArchivePlugin readPlugin = Archive.getReadPlugin();
     if (readPlugin.canConvertOnReplace()) {
-      
+
       // 3.15 added the TemporarySettings so that when doing Conversions during an Extract, it doesn't call createInterface, which was retaining memory
       TemporarySettings.set("ExportForConversionOnly", true);
       file = readPlugin.convertOnReplace(this, file);

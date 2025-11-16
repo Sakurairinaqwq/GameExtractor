@@ -74,6 +74,10 @@ There is a Contact Form on our website, if you need to contact us for any furthe
 
 ## Version History
 
+* Version 3.16.0004
+  * [I] Small incremental version, with the intention of primarily adding more supported games.
+  * [+] Added a GIF animation writer, and the ability to export animations as a single file.
+
 * Version 3.16.0003
   * [I] Small incremental version, with the intention of primarily adding more supported games.
   * [+] Have now added a local Windows 32-bit JRE 1.8 which still includes JavaFX

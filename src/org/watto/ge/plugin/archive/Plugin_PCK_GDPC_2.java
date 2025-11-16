@@ -118,9 +118,14 @@ public class Plugin_PCK_GDPC_2 extends ArchivePlugin {
       // 4 - Unknown (1)
       // 4 - Unknown (1)
       // 4 - null
-      // 4 - Hash?
-      // 68 - null
-      fm.skip(96);
+      fm.skip(24);
+
+      // 8 - File Data Offset
+      long fileDataOffset = fm.readLong();
+      FieldValidator.checkOffset(fileDataOffset, arcSize);
+
+      // 64 - null
+      fm.skip(64);
 
       // 4 - Number Of Files
       int numFiles = fm.readInt();
@@ -130,10 +135,11 @@ public class Plugin_PCK_GDPC_2 extends ArchivePlugin {
       TaskProgressManager.setMaximum(numFiles);
 
       // Loop through directory
+      int realNumFiles = 0;
       for (int i = 0; i < numFiles; i++) {
         // 4 - Filename Length (including padding)
         int filenameLength = fm.readInt();
-        FieldValidator.checkFilenameLength(filenameLength);
+        FieldValidator.checkFilenameLength(filenameLength + 1); // +1 to allow empty names (which are also empty files)
 
         // X - Filename
         // 0-3 - null Padding to a multiple of 4 bytes
@@ -166,17 +172,26 @@ public class Plugin_PCK_GDPC_2 extends ArchivePlugin {
         }
         */
 
-        //path,name,offset,length,decompLength,exporter
-        resources[i] = new Resource(path, filename, offset, length);
+        if (filenameLength != 0) {
+          //path,name,offset,length,decompLength,exporter
+          resources[realNumFiles] = new Resource(path, filename, offset, length);
+          realNumFiles++;
+        }
 
         TaskProgressManager.setValue(i);
+      }
+
+      if (realNumFiles != numFiles) {
+        numFiles = realNumFiles;
+        resources = resizeResources(resources, realNumFiles);
       }
 
       // 8 - Hash?
       fm.skip(8);
 
       // Now set the offsets according to this location
-      long dataOffset = fm.getOffset();
+      //long dataOffset = fm.getOffset();
+      long dataOffset = fileDataOffset;
       for (int i = 0; i < numFiles; i++) {
         Resource resource = resources[i];
         resource.setOffset(resource.getOffset() + dataOffset);
@@ -301,7 +316,25 @@ public class Plugin_PCK_GDPC_2 extends ArchivePlugin {
           fm.seek(offset);
           String mainHeader = fm.readString(4);
 
-          fm.skip(60); // 4 already read from the above
+          fm.skip(52); // 4 already read from the above
+          if (fm.readString(4).equals("PNG ")) {
+            offset += 60;
+            int length = (int) resource.getLength() - 60;
+
+            resource.setOffset(offset);
+            resource.setLength(length);
+            resource.setDecompressedLength(length);
+
+            String newName = resource.getName() + ".png";
+            resource.setName(newName);
+            resource.setOriginalName(newName);
+
+            resource.forceNotAdded(true);
+            continue;
+          }
+          else {
+            fm.skip(4); // read another 4 (and we've already read another 4 above as well)
+          }
 
           if (fm.readString(4).equals("WEBP")) {
             offset += 56;

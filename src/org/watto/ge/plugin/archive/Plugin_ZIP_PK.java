@@ -538,7 +538,7 @@ public class Plugin_ZIP_PK extends ArchivePlugin {
           TaskProgressManager.setValue(offset);
 
         }
-        else if (entryType == 513 || entryType == 1311233) {
+        else if (entryType == 513 || entryType == 1311233 || entryType == 2753025) {
           // Directory Entry
 
           // 2 - Unknown (20)
@@ -622,6 +622,7 @@ public class Plugin_ZIP_PK extends ArchivePlugin {
           // 2 - null
           fm.skip(16);
         }
+
         /*// don't want this, as we try Crypto before we try Manual
         else if (entryType == 51643395 || entryType == 2032129) {
           // Encrypted File Entry
@@ -774,8 +775,7 @@ public class Plugin_ZIP_PK extends ArchivePlugin {
     }
     catch (Throwable t) {
       logError(t);
-      readManually(path);
-      return null;
+      return readManually(path);
     }
   }
 

@@ -16,6 +16,7 @@ package org.watto.task;
 
 import java.io.File;
 import java.util.Arrays;
+
 import org.watto.Language;
 import org.watto.Settings;
 import org.watto.SingletonManager;
@@ -38,6 +39,7 @@ import org.watto.ge.plugin.exporter.Exporter_QuickBMS_Decompression;
 import org.watto.ge.plugin.resource.Resource_PAK_38;
 import org.watto.ge.plugin.viewer.Viewer_OGG_OGG;
 import org.watto.io.DirectoryBuilder;
+
 import sun.awt.shell.ShellFolder;
 
 /**
@@ -321,7 +323,11 @@ public class Task_ExportFiles extends AbstractTask {
                   */
                   // If there are multiple frames in the image, and it's a manual transition (not an animation), we want to save each frame [3.13]
                   boolean previewsWritten = false;
-                  if (previewPanel instanceof PreviewPanel_Image) {
+                  if (converterPlugin.canWriteAnimation()) {
+                    // Just write out the animation to a single image, we don't want to write out each frame individually [3.16.0004]
+                    // The actual write occurs down further, this is just to stop it entering the next else-if.
+                  }
+                  else if (previewPanel instanceof PreviewPanel_Image) {
                     PreviewPanel_Image imagePanel = (PreviewPanel_Image) previewPanel;
                     ImageResource imageResource = imagePanel.getImageResource();
                     if (imageResource.getNextFrame() != null) {
@@ -372,7 +378,8 @@ public class Task_ExportFiles extends AbstractTask {
                     }
                   }
                   // Otherwise just save the current frame
-                  // ALSO COMES HERE IF IT'S NOT AM IMAGE (eg a model converter)
+                  // ALSO COMES HERE IF IT'S NOT AN IMAGE (eg a model converter)
+                  // ALSO COMES HERE if the plugin can write animation files, this will write a single file with the animation in it [3.16.0004]
                   if (!previewsWritten) {
                     File destination = new File(path.getAbsolutePath() + "." + converterPlugin.getExtension(0));
                     converterPlugin.write(previewPanel, destination);

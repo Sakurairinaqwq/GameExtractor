@@ -191,6 +191,9 @@ public class Plugin_PAK_76 extends ArchivePlugin {
 
         // X - Filename
         String filename = fm.readString(filenameLength);
+        if (filename.startsWith("D:\\")) {
+          filename = filename.substring(3);
+        }
 
         // 4 - Compressed File Length
         int length = fm.readInt();
@@ -221,8 +224,9 @@ public class Plugin_PAK_76 extends ArchivePlugin {
       int[] key2 = new int[] { 101, 52, 51, 48, 55, 57 }; // The Revenge of the Witch (confirmed against download from BigFishGames)
       int[] key3 = new int[] { 101, 53, 51, 53, 50, 49 }; // The Kingdom of Despair (confirmed against download from BigFishGames)
       int[] key4 = new int[] { 101, 54, 52, 52, 51, 52 }; // Wolf Healer (confirmed against download from BigFishGames)
+      int[] key5 = new int[] { 97, 117, 0, 0, 0, 0 }; // Fatal Passion - Art Prison (not currently working, not sure of the remaining key values)
 
-      int[][] keys = new int[][] { key1, key2, key3, key4 };
+      int[][] keys = new int[][] { key1, key2, key3, key4, key5 };
 
       int[] validKey = null;
 
@@ -258,10 +262,11 @@ public class Plugin_PAK_76 extends ArchivePlugin {
                   // try each key
                   byte[] decryptedBytes = new byte[length];
                   int keyPos = 0;
+                  int keyLength = keys[k].length;
                   for (int b = 0; b < length; b++) {
                     decryptedBytes[b] = (byte) (origBytes[b] ^ keys[k][keyPos]);
                     keyPos++;
-                    if (keyPos >= 6) {
+                    if (keyPos >= keyLength) {
                       keyPos = 0;
                     }
                   }

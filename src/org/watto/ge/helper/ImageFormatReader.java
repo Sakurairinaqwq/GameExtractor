@@ -3671,6 +3671,51 @@ public class ImageFormatReader {
 
   /**
    **********************************************************************************************
+  Converts alpha values 0-255 to 0-127
+   **********************************************************************************************
+   **/
+  public static ImageResource halveAlpha(ImageResource image) {
+    int[] pixels = image.getPixels();
+    int numPixels = pixels.length;
+
+    int[] reversedPixels = new int[numPixels];
+    for (int i = 0; i < numPixels; i++) {
+      int pixel = pixels[i];
+
+      int alphaValue = ByteConverter.unsign((byte) (pixel >> 24));
+      alphaValue /= 2;
+
+      reversedPixels[i] = (pixel & 0xFFFFFF) | (alphaValue << 24);
+    }
+
+    image.setPixels(reversedPixels);
+    return image;
+  }
+
+  /**
+   **********************************************************************************************
+  Converts alpha values 0-255 to 0-127
+   **********************************************************************************************
+   **/
+  public static int[] halveAlpha(int[] pixels) {
+    int numPixels = pixels.length;
+
+    int[] reversedPixels = new int[numPixels];
+    for (int i = 0; i < numPixels; i++) {
+      int pixel = pixels[i];
+
+      int alphaValue = ByteConverter.unsign((byte) (pixel >> 24));
+      //System.out.println(alphaValue + "\t" + (alphaValue / 2));
+      alphaValue /= 2;
+
+      reversedPixels[i] = (pixel & 0xFFFFFF) | (alphaValue << 24);
+    }
+
+    return reversedPixels;
+  }
+
+  /**
+   **********************************************************************************************
   Changes all the Alpha values so that 0=255, 1=254, etc. Ie for when 0 actually means full alpha
    **********************************************************************************************
    **/

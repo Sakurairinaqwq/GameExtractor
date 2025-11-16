@@ -2,7 +2,7 @@
  * Application:  Game Extractor
  * Author:       wattostudios
  * Website:      http://www.watto.org
- * Copyright:    Copyright (c) 2002-2022 wattostudios
+ * Copyright:    Copyright (c) 2002-2025 wattostudios
  *
  * License Information:
  * This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -15,11 +15,13 @@
 package org.watto.ge.plugin.archive;
 
 import java.io.File;
+
 import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.io.FileManipulator;
+import org.watto.io.converter.ByteConverter;
 import org.watto.task.TaskProgressManager;
 
 /**
@@ -49,7 +51,7 @@ public class Plugin_AR extends ArchivePlugin {
 
     //setTextPreviewExtensions("colours", "rat", "screen", "styles"); // LOWER CASE
 
-    setCanScanForFileTypes(true);
+    //setCanScanForFileTypes(true);
 
   }
 
@@ -174,6 +176,79 @@ public class Plugin_AR extends ArchivePlugin {
         resources[i] = new Resource(path, filename, offset, length);
 
         TaskProgressManager.setValue(i);
+      }
+
+      // Loop through directory
+      long[] reconstructionOffsets = new long[numFiles];
+      for (int i = 0; i < numFiles; i++) {
+        // 4 - Offset into Reconstruction Directory for this file (relative to the start of the Reconstruction Directory)
+        int offset = fm.readInt();
+        FieldValidator.checkOffset(offset, arcSize);
+        reconstructionOffsets[i] = offset;
+      }
+
+      // SKIP THE FLAGS DIRECTORY
+      // SKIP THE NULLS DIRECTORY
+      fm.skip((numFiles * 4) + (numFiles * 4));
+
+      // 4 - Number of Names
+      int numNames = fm.readInt();
+      FieldValidator.checkNumFiles(numNames);
+
+      // 4 - Name Directory Length
+      int nameDirLength = fm.readInt();
+      FieldValidator.checkLength(nameDirLength, arcSize);
+
+      long relativeNameOffset = fm.getOffset() + (numNames * 4);
+      long reconstructionDirOffset = relativeNameOffset + nameDirLength;
+
+      long[] nameOffsets = new long[numNames];
+      for (int i = 0; i < numNames; i++) {
+        // 4 - Name Offset (relative to the start of the Names Directory)
+        nameOffsets[i] = relativeNameOffset + fm.readInt();
+      }
+
+      String[] names = new String[numNames];
+      for (int i = 0; i < numNames; i++) {
+        fm.relativeSeek(nameOffsets[i]);
+
+        // X - Partial Name
+        // 1 - null Name Terminator
+        String name = fm.readNullString();
+        names[i] = name;
+      }
+
+      // Read the name reconstructions
+      for (int i = 0; i < numFiles; i++) {
+        fm.relativeSeek(reconstructionDirOffset + reconstructionOffsets[i]);
+
+        String filename = "";
+
+        //long nameOffset = fm.getOffset();
+
+        int currentByte = ByteConverter.unsign(fm.readByte());
+        while (currentByte != 0) {
+          int nameIndex = 0;
+
+          if (currentByte >= 128) {
+            nameIndex = ((currentByte - 128) << 8) | ByteConverter.unsign(fm.readByte());
+          }
+          else {
+            nameIndex = currentByte;
+          }
+
+          nameIndex--; // name indexes actually start at 1, in this directory, because 0 means "end of entry" so can't be used as an index
+
+          filename += names[nameIndex];
+
+          // read the next byte
+          currentByte = ByteConverter.unsign(fm.readByte());
+        }
+
+        //System.out.println((i + 1) + "\t" + nameOffset + "\t" + filename);
+        Resource resource = resources[i];
+        resource.setName(filename);
+        resource.setOriginalName(filename);
       }
 
       fm.close();

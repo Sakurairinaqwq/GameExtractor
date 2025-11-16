@@ -162,6 +162,11 @@ public class Plugin_DAT_112 extends ArchivePlugin {
     if (headerInt1 == 1347635246) {
       return "hsp";
     }
+    else if (headerInt1 == resource.getLength()) {
+      if (headerShort3 == -20718) {
+        return "flc"; // FLIC Animation File
+      }
+    }
 
     return null;
   }

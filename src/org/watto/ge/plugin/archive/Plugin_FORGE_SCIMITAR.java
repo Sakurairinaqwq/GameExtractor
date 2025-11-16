@@ -16,13 +16,19 @@ package org.watto.ge.plugin.archive;
 
 import java.io.File;
 
+import org.watto.ErrorLogger;
 import org.watto.datatype.Archive;
+import org.watto.datatype.FileType;
 import org.watto.datatype.Resource;
 import org.watto.ge.helper.FieldValidator;
 import org.watto.ge.plugin.ArchivePlugin;
 import org.watto.ge.plugin.ExporterPlugin;
-import org.watto.ge.plugin.exporter.BlockExporterWrapper;
+import org.watto.ge.plugin.exporter.BlockVariableExporterWrapper;
+import org.watto.ge.plugin.exporter.Exporter_Default;
 import org.watto.ge.plugin.exporter.Exporter_LZO_SingleBlock;
+import org.watto.ge.plugin.exporter.Exporter_Oodle;
+import org.watto.ge.plugin.exporter.Exporter_QuickBMS_DLL;
+import org.watto.ge.plugin.exporter.Exporter_ZStd;
 import org.watto.io.FileManipulator;
 import org.watto.io.converter.ShortConverter;
 import org.watto.task.TaskProgressManager;
@@ -54,9 +60,7 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
     setPlatforms("PC");
 
     // MUST BE LOWER CASE !!!
-    //setFileTypes(new FileType("txt", "Text Document", FileType.TYPE_DOCUMENT),
-    //             new FileType("bmp", "Bitmap Image", FileType.TYPE_IMAGE)
-    //             );
+    setFileTypes(new FileType("forge_dat", "DAT Archive", FileType.TYPE_ARCHIVE));
 
   }
 
@@ -111,8 +115,12 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
 
       addFileTypes();
 
-      ExporterPlugin exporterLZO = Exporter_LZO_SingleBlock.getInstance();
-      //ExporterPlugin exporterLZO = Exporter_LZO2.getInstance();
+      ExporterPlugin exporterDefault = Exporter_Default.getInstance();
+      ExporterPlugin exporterLZO1X = Exporter_LZO_SingleBlock.getInstance();
+      ExporterPlugin exporterLZO1C = new Exporter_QuickBMS_DLL("LZO1C");
+      ExporterPlugin exporterLZO2A = new Exporter_QuickBMS_DLL("LZO2A");
+      ExporterPlugin exporterZSTD = Exporter_ZStd.getInstance();
+      ExporterPlugin exporterOodle = Exporter_Oodle.getInstance();
 
       // RESETTING GLOBAL VARIABLES
 
@@ -155,13 +163,15 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
       FieldValidator.checkOffset(filenameDirOffset, arcSize);
 
       // 8 - Offset to the End of the Filename Directory (including the blank entry)
-      fm.skip(8);
+      long filenameEndDirOffset = fm.readLong() + 1;
 
       Resource[] resources = new Resource[numFiles];
       TaskProgressManager.setMaximum(numFiles);
 
       // Loop through directory
       int realNumFiles = 0;
+      boolean useRelativeOffsets = false;
+      long relativeOffset = 0;
       for (int i = 0; i < numFiles; i++) {
         // 8 - File Offset
         long offset = fm.readLong();
@@ -175,15 +185,24 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
         int length = fm.readInt();
         FieldValidator.checkLength(length, arcSize);
 
-        if (offset > arcSize) {
-          continue;
+        if (offset > arcSize && i == 0) {
+          // this is probably a decrypted file... so we need to calculate the offsets relative to the filenameEndDirOffset
+          useRelativeOffsets = true;
+          relativeOffset = filenameEndDirOffset;
+          offset = filenameEndDirOffset;
         }
 
-        String filename = Resource.generateFilename(realNumFiles);
+        if (useRelativeOffsets) {
+          offset = relativeOffset;
+        }
+
+        String filename = Resource.generateFilename(realNumFiles) + ".forge_dat";
 
         //path,name,offset,length,decompLength,exporter
         resources[realNumFiles] = new Resource(path, filename, offset, length);
         realNumFiles++;
+
+        relativeOffset += length;
 
         TaskProgressManager.setValue(i);
       }
@@ -212,7 +231,7 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
           // 128 - Filename (null terminated, filled with nulls)
           String filename = fm.readNullString(128);
           FieldValidator.checkFilename(filename);
-          names[i] = filename;
+          names[i] = filename + ".forge_dat";
 
           // 4 - Unknown (4)
           // 8 - null
@@ -244,88 +263,184 @@ public class Plugin_FORGE_SCIMITAR extends ArchivePlugin {
       fm.getBuffer().setBufferSize(128);
 
       for (int i = 0; i < numFiles; i++) {
-        Resource resource = resources[i];
+        try {
+          Resource resource = resources[i];
 
-        long resourceOffset = resource.getOffset();
-        fm.seek(resourceOffset);
-        long endOffset = resourceOffset + resource.getLength();
+          long resourceOffset = resource.getOffset();
+          fm.seek(resourceOffset);
+          long endOffset = resourceOffset + resource.getLength();
 
-        int maxChunks = Archive.getMaxFiles();
-        long[] chunkOffsets = new long[maxChunks];
-        long[] chunkLengths = new long[maxChunks];
-        long[] chunkDecompLengths = new long[maxChunks];
-        int currentChunk = 0;
+          int maxChunks = Archive.getMaxFiles();
+          long[] chunkOffsets = new long[maxChunks];
+          long[] chunkLengths = new long[maxChunks];
+          long[] chunkDecompLengths = new long[maxChunks];
+          ExporterPlugin[] chunkExporters = new ExporterPlugin[maxChunks];
+          int currentChunk = 0;
 
-        long totalDecompLength = 0;
+          long totalDecompLength = 0;
 
-        // there can be multiple compressed blocks in each file, and each compressed block is made up of smaller compressed chunks
-        while (fm.getOffset() < endOffset) {
-          // 8 - Compression Header
-          long compressionHeader = fm.readLong();
-          if (compressionHeader != 1154322941026740787l) {
-            // not compressed
-            continue;
+          // there can be multiple compressed blocks in each file, and each compressed block is made up of smaller compressed chunks
+          int chunkFieldLength = 0;
+          while (fm.getOffset() < endOffset) {
+            // 8 - Compression Header
+            //long compressionHeader = fm.readLong();
+            //if (compressionHeader != 1154322941026740787l) {
+            int compressionHeader = fm.readInt();
+            fm.skip(4);
+            if (compressionHeader != 1476110899 && compressionHeader != 1476110900) {
+              // not compressed
+              if (currentChunk == 0) {
+                System.out.println("File at offset " + resourceOffset + " is not compressed.");
+              }
+              else {
+                System.out.println("Couldn't find the compression header part-way through the file at offset " + resourceOffset);
+              }
+              break;
+            }
+
+            // 2 - Version (1)
+            int version = fm.readShort();
+
+            // 1 - Compression Type (0/1=LZO1X, 2=LZO2A, 3=ZSTD, 4=OODLE, 5=LZO1C, 7/8=OODLE)
+            int compressionType = fm.readByte();
+            ExporterPlugin chunkExporter = exporterDefault;
+            if (compressionType == 0 || compressionType == 1) {
+              chunkExporter = exporterLZO1X;
+            }
+            else if (compressionType == 2) {
+              chunkExporter = exporterLZO2A;
+            }
+            else if (compressionType == 3) {
+              chunkExporter = exporterZSTD;
+            }
+            else if (compressionType == 5) {
+              chunkExporter = exporterLZO1C;
+            }
+            else {
+              chunkExporter = exporterOodle;
+            }
+
+            // 2 - Maximum Decompressed Chunk Size
+            // 2 - Maximum Compressed Chunk Size
+            fm.skip(4);
+
+            // 2/4 - Number of Chunks
+            long chunkCheckOffset = fm.getOffset();
+            int numChunks = 0;
+            if (chunkFieldLength == 0) {
+              // check for the size
+              numChunks = fm.readInt();
+              if (numChunks > 65536) {
+                // probably just a short field
+                fm.relativeSeek(chunkCheckOffset);
+                numChunks = fm.readShort();
+                chunkFieldLength = 2;
+              }
+              else {
+                chunkFieldLength = 4;
+              }
+            }
+            else {
+              // use the size we've found previously
+
+              if (chunkFieldLength == 2) {
+                numChunks = fm.readShort();
+              }
+              else if (chunkFieldLength == 4) {
+                numChunks = fm.readInt();
+              }
+            }
+
+            FieldValidator.checkNumFiles(numChunks);
+
+            long offset = fm.getOffset();
+            if (version <= 1) {
+              offset += (numChunks * 4);
+            }
+            else {
+              offset += (numChunks * 8);
+            }
+            for (int c = 0; c < numChunks; c++) {
+              if (version <= 1) {
+                // 2 - Decompressed Chunk Length
+                int decompLength = ShortConverter.unsign(fm.readShort());
+                chunkDecompLengths[currentChunk] = decompLength;
+
+                // 2 - Compressed Chunk Length
+                int length = ShortConverter.unsign(fm.readShort());
+                chunkLengths[currentChunk] = length;
+
+                offset += 4; // skip the CRC on the compressed chunk
+                chunkOffsets[currentChunk] = offset;
+
+                if (length == decompLength) {
+                  // raw
+                  chunkExporters[currentChunk] = exporterDefault;
+                }
+                else {
+                  // compressed
+                  chunkExporters[currentChunk] = chunkExporter;
+                }
+
+                totalDecompLength += decompLength;
+                offset += length; // ready for the next chunk
+                currentChunk++;
+              }
+              else {
+                // 4 - Decompressed Chunk Length
+                int decompLength = fm.readInt();
+                chunkDecompLengths[currentChunk] = decompLength;
+
+                // 4 - Compressed Chunk Length
+                int length = fm.readInt();
+                chunkLengths[currentChunk] = length;
+
+                offset += 4; // skip the CRC on the compressed chunk
+                chunkOffsets[currentChunk] = offset;
+
+                if (length == decompLength) {
+                  // raw
+                  chunkExporters[currentChunk] = exporterDefault;
+                }
+                else {
+                  // compressed
+                  chunkExporters[currentChunk] = chunkExporter;
+                }
+
+                totalDecompLength += decompLength;
+                offset += length; // ready for the next chunk
+                currentChunk++;
+              }
+
+            }
+
+            // move to the end of the compressed chunks, in case there's more compressed chunks to process afterwards
+            fm.seek(offset);
+
           }
 
-          // 2 - Version (1)
-          if (fm.readShort() != 1) {
-            // unsupported version
-            continue;
+          if (currentChunk > 0) {
+            // shrink the 3 arrays to the correct number of chunks
+            long[] cutChunkOffsets = new long[currentChunk];
+            System.arraycopy(chunkOffsets, 0, cutChunkOffsets, 0, currentChunk);
+            long[] cutChunkLengths = new long[currentChunk];
+            System.arraycopy(chunkLengths, 0, cutChunkLengths, 0, currentChunk);
+            long[] cutChunkDecompLengths = new long[currentChunk];
+            System.arraycopy(chunkDecompLengths, 0, cutChunkDecompLengths, 0, currentChunk);
+            ExporterPlugin[] cutChunkExporters = new ExporterPlugin[currentChunk];
+            System.arraycopy(chunkExporters, 0, cutChunkExporters, 0, currentChunk);
+
+            BlockVariableExporterWrapper blockExporter = new BlockVariableExporterWrapper(cutChunkExporters, cutChunkOffsets, cutChunkLengths, cutChunkDecompLengths);
+            resource.setDecompressedLength(totalDecompLength);
+            resource.setExporter(blockExporter);
           }
 
-          // 1 - Compression Type (0=LZO1 1=LZO1, 2=LZO2, 3=zstd, 4=oodle, 5=lzo1c, all others are oodle)
-          if (fm.readByte() != 1) {
-            // unsupported compression
-            continue;
-          }
-
-          // 2 - Maximum Decompressed Chunk Size
-          // 2 - Maximum Compressed Chunk Size
-          fm.skip(4);
-
-          // 4 - Number of Chunks
-          int numChunks = fm.readInt();
-          FieldValidator.checkNumFiles(numChunks);
-
-          long offset = fm.getOffset() + numChunks * 4;
-          for (int c = 0; c < numChunks; c++) {
-            // 2 - Decompressed Chunk Length
-            int decompLength = ShortConverter.unsign(fm.readShort());
-            chunkDecompLengths[currentChunk] = decompLength;
-
-            // 2 - Compressed Chunk Length
-            int length = ShortConverter.unsign(fm.readShort());
-            chunkLengths[currentChunk] = length;
-
-            offset += 4; // skip the CRC on the compressed chunk
-            chunkOffsets[currentChunk] = offset;
-
-            totalDecompLength += decompLength;
-            offset += length; // ready for the next chunk
-            currentChunk++;
-          }
-
-          // move to the end of the compressed chunks, in case there's more compressed chunks to process afterwards
-          fm.seek(offset);
-
+          TaskProgressManager.setValue(i);
         }
-
-        if (currentChunk > 0) {
-          // shrink the 3 arrays to the correct number of chunks
-          long[] cutChunkOffsets = new long[currentChunk];
-          System.arraycopy(chunkOffsets, 0, cutChunkOffsets, 0, currentChunk);
-          long[] cutChunkLengths = new long[currentChunk];
-          System.arraycopy(chunkLengths, 0, cutChunkLengths, 0, currentChunk);
-          long[] cutChunkDecompLengths = new long[currentChunk];
-          System.arraycopy(chunkDecompLengths, 0, cutChunkDecompLengths, 0, currentChunk);
-
-          BlockExporterWrapper blockExporter = new BlockExporterWrapper(exporterLZO, cutChunkOffsets, cutChunkLengths, cutChunkDecompLengths);
-          resource.setDecompressedLength(totalDecompLength);
-          resource.setExporter(blockExporter);
+        catch (Throwable t) {
+          // Ignore errors with compression determination
+          ErrorLogger.log(t);
         }
-
-        TaskProgressManager.setValue(i);
-
       }
 
       fm.close();
